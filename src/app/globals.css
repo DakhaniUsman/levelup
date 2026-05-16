@@ -1,26 +1,228 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ════════════════════════════════════════════════════════════
+   TAILWIND v4 DESIGN TOKENS  — defined via @theme (no config file)
+   ════════════════════════════════════════════════════════════ */
+@theme {
+  /* ── Fonts ── */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+
+  /* ── Brand Colors ── */
+  --color-primary:        #00eeff;
+  --color-primary-dim:    #00c4d4;
+  --color-primary-glow:   rgba(0, 238, 255, 0.25);
+
+  --color-secondary:      #c50b9c;
+  --color-secondary-dim:  #9a0878;
+  --color-secondary-glow: rgba(197, 11, 156, 0.25);
+
+  /* ── Dark Mode Palette ── */
+  --color-dark-bg:        #081c29;
+  --color-dark-surface:   #0d2538;
+  --color-dark-surface2:  #122d44;
+  --color-dark-border:    #1a3a52;
+  --color-dark-border2:   #1f4a66;
+  --color-dark-text:      #ffffff;
+  --color-dark-muted:     #7ba8c4;
+  --color-dark-subtle:    #3a6882;
+
+  /* ── Light Mode Palette ── */
+  --color-light-bg:       #f0f8ff;
+  --color-light-surface:  #ffffff;
+  --color-light-surface2: #e8f4fd;
+  --color-light-border:   #cbd5e1;
+  --color-light-text:     #0d1117;
+  --color-light-muted:    #475569;
+  --color-light-subtle:   #94a3b8;
+
+  /* ── Priority Colors ── */
+  --color-priority-high:    #ff4757;
+  --color-priority-medium:  #ffa502;
+  --color-priority-low:     #00eeff;
+
+  /* ── Semantic (mapped to dark defaults, overridden in light) ── */
+  --color-bg:       var(--color-dark-bg);
+  --color-surface:  var(--color-dark-surface);
+  --color-border:   var(--color-dark-border);
+  --color-text:     var(--color-dark-text);
+  --color-muted:    var(--color-dark-muted);
+
+  /* ── Spacing extras ── */
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+
+  /* ── Border radius ── */
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ════════════════════════════════════════════════════════════
+   BASE RESET & ROOT
+   ════════════════════════════════════════════════════════════ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: auto; /* Lenis handles smooth scroll */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  background-color: var(--color-dark-bg);
+  color: var(--color-dark-text);
+  min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ════════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES  (applied via .light class on <html>)
+   ════════════════════════════════════════════════════════════ */
+.light body {
+  background-color: var(--color-light-bg);
+  color: var(--color-light-text);
+}
+
+/* ════════════════════════════════════════════════════════════
+   CUSTOM KEYFRAMES
+   ════════════════════════════════════════════════════════════ */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--color-primary-glow), 0 0 20px var(--color-primary-glow); }
+  50%       { box-shadow: 0 0 16px var(--color-primary-glow), 0 0 40px var(--color-primary-glow); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+@keyframes orb-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(30px, -20px) scale(1.05); }
+  66%  { transform: translate(-20px, 10px) scale(0.97); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ════════════════════════════════════════════════════════════ */
+
+/* Glassmorphism card */
+.glass {
+  background: rgba(13, 37, 56, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(26, 58, 82, 0.8);
+}
+
+.light .glass {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(203, 213, 225, 0.8);
+}
+
+/* Glow border utilities */
+.glow-cyan {
+  box-shadow: 0 0 0 1px rgba(0, 238, 255, 0.4),
+              0 0 20px rgba(0, 238, 255, 0.15);
+}
+
+.glow-magenta {
+  box-shadow: 0 0 0 1px rgba(197, 11, 156, 0.4),
+              0 0 20px rgba(197, 11, 156, 0.15);
+}
+
+.glow-red {
+  box-shadow: 0 0 0 1px rgba(255, 71, 87, 0.4),
+              0 0 20px rgba(255, 71, 87, 0.1);
+}
+
+/* Neon text */
+.text-neon-cyan {
+  color: var(--color-primary);
+  text-shadow: 0 0 20px rgba(0, 238, 255, 0.5);
+}
+
+.text-neon-magenta {
+  color: var(--color-secondary);
+  text-shadow: 0 0 20px rgba(197, 11, 156, 0.5);
+}
+
+/* Shimmer gradient text */
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-secondary),
+    var(--color-primary)
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Orb blobs */
+.orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  animation: orb-drift 12s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-dark-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-dark-border2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-dim);
+}
+
+.light ::-webkit-scrollbar-track {
+  background: var(--color-light-bg);
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: var(--color-light-border);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Drag-and-drop active state */
+.is-dragging {
+  opacity: 0.85;
+  transform: rotate(1.5deg) scale(1.02);
 }
