@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide";
+import { Plus } from "lucide-react";
 import React, { useState } from "react";
 
 const ToDoList = () => {
@@ -11,59 +11,50 @@ const ToDoList = () => {
     { id: 4, todo: "Repeat" },
   ]);
 
-  const [todo, setTodo] = useState("")
+  const [todo, setTodo] = useState({
+    id: "",
+    todo: "",
+  });
+  console.log("todo", todo);
 
   const handleChange = (e) => {
-    e.preventDefault();
-    console.log("e",e.target.value);
+    console.log("name", e.target.name, ":", "value", e.target.value);
 
-    setTodo(e.target.value)
-  }
-
-  const handleAdd = (todo) => {
-    console.log("todo", todo)
-    setTodos((prev)=>({
-        ...prev,
-        id : 5,
-        todo : todo
-  }))
-  }
+    setTodo({
+      id: todos[todos.length - 1].id + 1,
+      todo: e.target.value,
+    });
+  };
 
   return (
-    <div className="relative w-full min-w-[250px] h-[100vh] flex justify-center items-center">
-      <div className="max-w-[300px] p-4 shadow-2xl rounded-2xl shadow-gray-200">
-        <h2>heading</h2>
-
-        <div className="flex justify-center items-center gap-4" onChange={handleChange} value={todo}>
-          <input type="text" className="border border-2 rounded-2xl" />
-
-          <div>
-            <button className="w-8 h-8 p-3 rounded-[50%] flex justify-center items-center bg-gray-300 text-black"
-            onClick={()=> handleAdd(todo)}
-            >
-              +
-            </button>
+    <div className="w-full h-screen bg-gray-100 flex justify-center items-center">
+      <div className="max-w-[300px] max-h-[75vh] p-4 rounded-2xl shadow-2xl bg-gray-400 flex flex-col gap-4">
+        <div className="w-full flex gap-4">
+          <input
+            type="text"
+            name="todo"
+            id="todo"
+            className="border border-2 border-white px-2 py-1 rounded-2xl"
+            onChange={handleChange}
+          />
+          <div className="w-[24] h-[24] rounded-[50%]">
+            <Plus size={24} />
           </div>
         </div>
-
-        <div className="flex justify-start gap-4">
-          {todos?.length === 0 ? (
+        <div className="w-full flex gap-2">
+          {todos.length === 0 ? (
             <>
-              <div>
-                <p>No todos found</p>
+              <div className="flex justify-center items-center">
+                <p className="text-red-500">No todos for the day</p>
               </div>
             </>
           ) : (
             <>
-              <div> 
-                {todos?.map((todo) => (
-                    <>
-                    <div className="flex gap-2">
-                        <p>
-                            <span>{todo.id}</span>. <span key={todo.id}>{todo.todo}</span>
-                        </p>
-                    </div>
-                    </>
+              <div className="flex flex-col gap-2">
+                {todos.map((todo) => (
+                  <p className="w-full pl-2">
+                    {todo.id}. {todo.todo}
+                  </p>
                 ))}
               </div>
             </>
