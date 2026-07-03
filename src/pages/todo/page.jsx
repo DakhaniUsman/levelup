@@ -1,64 +1,65 @@
 "use client";
 
-import { Plus } from "lucide-react";
 import React, { useState } from "react";
+import { Delete, Edit, PlusCircleIcon } from "lucide-react";
 
 const ToDoList = () => {
-  const [todos, setTodos] = useState([
-    { id: 1, todo: "Eat" },
-    { id: 2, todo: "Sleep" },
-    { id: 3, todo: "Conquer" },
-    { id: 4, todo: "Repeat" },
-  ]);
+  const [item, setItem] = useState("");
 
-  const [todo, setTodo] = useState({
-    id: "",
-    todo: "",
-  });
-  console.log("todo", todo);
+  const [todoList, setTodoList] = useState(["Eat", "Sleep", "Code", "Repeat"]);
 
   const handleChange = (e) => {
-    console.log("name", e.target.name, ":", "value", e.target.value);
+    e.preventDefault();
 
-    setTodo({
-      id: todos[todos.length - 1].id + 1,
-      todo: e.target.value,
-    });
+    setItem(e.target.value);
+  };
+
+  const handleAdd = () => {
+    setTodoList([...todoList, item]);
+    setItem("");
   };
 
   return (
-    <div className="w-full h-screen bg-gray-100 flex justify-center items-center">
-      <div className="max-w-[300px] max-h-[75vh] p-4 rounded-2xl shadow-2xl bg-gray-400 flex flex-col gap-4">
-        <div className="w-full flex gap-4">
+    <div className="w-full h-screen flex gap-4 flex-col justify-center items-center bg-[#0a0a0a]">
+      <h1>This is my todo list</h1>
+
+      <div className="w-100 h-[50vh] bg-gray-600 border-2 rounded-2xl flex flex-col gap-2 py-2">
+        <div className="w-70 flex justify-center mx-auto border gap-4">
           <input
             type="text"
             name="todo"
             id="todo"
-            className="border border-2 border-white px-2 py-1 rounded-2xl"
+            value={item}
+            placeholder="Enter your task!"
             onChange={handleChange}
+            className="py-1 px-2 rounded-2xl border-2 border-black active:border-none outline-emerald-500"
           />
-          <div className="w-[24] h-[24] rounded-[50%]">
-            <Plus size={24} />
+          <div>
+            <PlusCircleIcon
+              size={34}
+              className="text-cyan-500"
+              onClick={handleAdd}
+            />
           </div>
         </div>
-        <div className="w-full flex gap-2">
-          {todos.length === 0 ? (
-            <>
-              <div className="flex justify-center items-center">
-                <p className="text-red-500">No todos for the day</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-col gap-2">
-                {todos.map((todo) => (
-                  <p className="w-full pl-2">
-                    {todo.id}. {todo.todo}
+        <div className="w-full h-full">
+          <div className="flex flex-col justify-start gap-2">
+            {todoList.map((todoItem, index) => (
+              <>
+                <div key={index} className="flex justify-between items-center w-90 mx-auto">
+                  <p className="text-lg">
+                    <span>
+                      {index + 1}. {todoItem}
+                    </span>
                   </p>
-                ))}
-              </div>
-            </>
-          )}
+                  <div className="flex justify-center items-center gap-2 ">
+                    <Edit size={24} className="text-emerald-500"/>
+                    <Delete size={24} className="text-red-500"/>
+                  </div>
+                </div>
+              </>
+            ))}
+          </div>
         </div>
       </div>
     </div>
