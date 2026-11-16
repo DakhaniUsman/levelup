@@ -81,3 +81,28 @@
 - `isArchived`: Boolean
 - Text Index: `{ title: "text", description: "text", notes: "text", tags: "text" }`
 
+### 9. ProtocolItem (`models/ProtocolItem.ts`)
+- `userId`: ObjectId (ref: User, index)
+- `sphere`: Enum `['SPIRITUALITY', 'MENTAL', 'PHYSICAL', 'EMOTIONAL', 'FINANCIAL']`
+- `title`: String (maxlength: 120)
+- `description`: String (maxlength: 300)
+- `type`: Enum `['CHECKBOX', 'PRAYER_TRACKER', 'WORKOUT_LOG', 'FINANCIAL_AUDIT']`
+- `order`: Number (sorting position within sphere)
+- `isActive`: Boolean (default: true)
+- `isDeleted`: Boolean (soft delete flag preserving historical daily records)
+- Compound Index: `{ userId: 1, isDeleted: 1, sphere: 1, order: 1 }`
+
+### 10. DailyProtocol (`models/DailyProtocol.ts`)
+- `userId`: ObjectId (ref: User, index)
+- `targetDate`: String (`YYYY-MM-DD` in user timezone)
+- `activities`: Array of `{ itemId, sphere, type, title, description, order, isCompleted, completedAt, subItems, metadata }` (historical snapshot)
+- `overallScore`: Number (0 - 100%)
+- `inPenaltyZone`: Boolean
+- `penalty`: `{ pushupsDone, pushupsTarget, squatsDone, squatsTarget, stepsDone, stepsTarget, isCleared }`
+- `isTransgressed`: Boolean (System Judgement flag)
+- `transgressionReason`: String
+- `transgressedAt`: Date
+- Legacy compatibility fields: `spirituality`, `mentally`, `physically`, `emotionally`, `financially`
+- Compound Unique Index: `{ userId: 1, targetDate: 1 }`
+
+

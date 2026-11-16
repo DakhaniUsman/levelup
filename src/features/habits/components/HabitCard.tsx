@@ -1,14 +1,26 @@
 "use client";
 
-import { Check, Flame, Trash2, Pause, Play, Zap } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import {
+  Check,
+  Flame,
+  Trash2,
+  Pause,
+  Play,
+  Zap,
+  MoreVertical,
+  Edit3,
+} from "lucide-react";
 import { HabitWithToday } from "@/features/habits/services/habit.service";
+import { IHabit } from "@/models/Habit";
 import { cn } from "@/lib/utils";
 
 interface HabitCardProps {
   habit: HabitWithToday;
   onToggle: (id: string) => void;
   onPauseToggle: (id: string, isPaused: boolean) => void;
-  onDelete: (id: string) => void;
+  onDelete: (habit: IHabit) => void;
+  onEdit?: (habit: IHabit) => void;
   isToggling?: boolean;
 }
 
@@ -17,16 +29,33 @@ export default function HabitCard({
   onToggle,
   onPauseToggle,
   onDelete,
+  onEdit,
   isToggling,
 }: HabitCardProps) {
   const isDone = habit.isCompletedToday;
   const isPaused = habit.isPaused;
   const streak = habit.currentStreak || 0;
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    }
+    if (isMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMenuOpen]);
 
   return (
     <div
       className={cn(
-        "hud-card p-5 rounded-2xl border transition-all flex flex-col justify-between group relative overflow-hidden",
+        "hud-card p-5 rounded-2xl border transition-all flex flex-col justify-between group relative overflow-visible",
         isDone
           ? "border-emerald-500/40 bg-[#131620]/60 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
           : isPaused
@@ -43,23 +72,72 @@ export default function HabitCard({
             <span className="text-[10px] font-mono text-[#64748B] uppercase">
               [{habit.frequency}]
             </span>
+            {isPaused && (
+              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-950/40 border border-amber-600/40 text-amber-400">
+                PAUSED
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* 3-Dot Action Menu */}
+          <div className="relative shrink-0" ref={menuRef}>
             <button
-              onClick={() => onPauseToggle(habit._id.toString(), !isPaused)}
-              className="p-1 rounded text-[#64748B] hover:text-white"
-              title={isPaused ? "Resume Habit" : "Pause Habit"}
+              type="button"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-1 rounded-md text-[#64748B] hover:text-white hover:bg-[#1F2435]/60 transition-colors cursor-pointer"
+              title="Habit Actions"
             >
-              {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+              <MoreVertical className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => onDelete(habit._id.toString())}
-              className="p-1 rounded text-[#64748B] hover:text-[#FF2A55]"
-              title="Delete Habit"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+
+            {isMenuOpen && (
+              <div className="absolute right-0 mt-1 w-36 rounded-xl border border-[#1F2435] bg-[#0E1118] shadow-2xl py-1 z-30 font-mono text-xs animate-in fade-in duration-100">
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onEdit(habit);
+                    }}
+                    className="w-full px-3 py-1.5 text-left text-[#CBD5E1] hover:text-white hover:bg-[#1F2435] flex items-center gap-2 cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-[#00F0FF]" />
+                    <span>Edit Habit</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onPauseToggle(habit._id.toString(), !isPaused);
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-[#CBD5E1] hover:text-white hover:bg-[#1F2435] flex items-center gap-2 cursor-pointer"
+                >
+                  {isPaused ? (
+                    <>
+                      <Play className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Resume</span>
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Pause</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onDelete(habit);
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 flex items-center gap-2 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Habit</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

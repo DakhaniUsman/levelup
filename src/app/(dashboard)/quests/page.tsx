@@ -4,12 +4,16 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Swords, Plus, Loader2, Sparkles, Trophy } from "lucide-react";
 import { PopulatedOccurrence } from "@/features/quests/services/quest.service";
+import { IQuest } from "@/models/Quest";
 import QuestCard from "@/features/quests/components/QuestCard";
 import CreateQuestModal from "@/features/quests/components/CreateQuestModal";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function QuestsPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [questToEdit, setQuestToEdit] = useState<IQuest | null>(null);
+  const [questToDelete, setQuestToDelete] = useState<IQuest | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
 
   const { data: occurrences = [], isLoading } = useQuery<PopulatedOccurrence[]>({
@@ -31,10 +35,30 @@ export default function QuestsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["today-quests"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["progression-stats"] });
     },
     onSettled: () => {
       setCompletingId(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (questId: string) => {
+      const res = await fetch(`/api/quests/${questId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to delete quest");
+      }
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["today-quests"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["progression-stats"] });
+      setQuestToDelete(null);
     },
   });
 
@@ -57,7 +81,10 @@ export default function QuestsPage() {
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setQuestToEdit(null);
+            setIsModalOpen(true);
+          }}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#00F0FF] text-[#090A0F] font-mono font-bold text-xs hover:bg-[#00F0FF]/90 transition-all shadow-[0_0_15px_rgba(0,240,255,0.25)] cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -71,7 +98,7 @@ export default function QuestsPage() {
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 text-xs font-mono text-[#00F0FF] font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>TODAY'S COMPLETION RATE</span>
+              <span>TODAY&apos;S COMPLETION RATE</span>
             </div>
             <div className="text-2xl font-bold font-mono text-white">
               {completed} / {total}{" "}
@@ -121,18 +148,46 @@ export default function QuestsPage() {
               occurrence={occ}
               isCompleting={completingId === occ._id.toString()}
               onComplete={(id) => completeMutation.mutate(id)}
+              onEdit={(quest) => {
+                setQuestToEdit(quest);
+                setIsModalOpen(true);
+              }}
+              onDelete={(quest) => {
+                setQuestToDelete(quest);
+              }}
             />
           ))}
         </div>
       )}
 
-      {/* Quest Modal */}
+      {/* Create / Edit Quest Modal */}
       <CreateQuestModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        questToEdit={questToEdit}
+        onClose={() => {
+          setIsModalOpen(false);
+          setQuestToEdit(null);
+        }}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["today-quests"] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
         }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!questToDelete}
+        onClose={() => setQuestToDelete(null)}
+        onConfirm={() => {
+          if (questToDelete) {
+            deleteMutation.mutate(questToDelete._id.toString());
+          }
+        }}
+        title="DELETE QUEST TRIAL"
+        itemName={questToDelete?.title || "Daily Quest"}
+        description="Are you sure you want to deactivate and remove this recurring trial?"
+        warningText="Past completed trials and earned XP remain permanently recorded in your ledger. Future pending occurrences will be cleared."
+        isPending={deleteMutation.isPending}
       />
     </div>
   );

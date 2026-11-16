@@ -26,3 +26,9 @@ Mongoose Models (models/*)
 MongoDB Database
 ```
 
+## 4. Cross-Module Data Synchronization Architecture
+- **Protocol & Workouts**: Creating or modifying a workout session validates `targetDate` and calls `ProtocolService.syncWorkoutStatus(userId, timezone)`. If all workouts for today are deleted, `DailyProtocol.physically.gymWorkout` reverts to `false`, the `WORKOUT_LOG` activity snapshot unchecks, and daily overall scores recalculate automatically.
+- **Protocol & Expenses**: Creating, editing, or deleting an expense entry executes `ProtocolService.syncExpenseAudit(userId, timezone)`, recalculating `totalSpentToday` and setting `DailyProtocol.financially.auditCompleted` to `false` if zero expenses remain.
+- **Quests & Idempotent XP**: Deleting or archiving quests safely clears uncompleted future occurrences while leaving historical `QuestCompletion` records and immutable `XPTransaction` ledger entries intact. Modifying a completed task or quest never awards duplicate XP due to deterministic compound idempotency keys (`sourceType:sourceId:userId`).
+
+

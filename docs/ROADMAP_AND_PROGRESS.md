@@ -138,6 +138,26 @@ The following files represent the verified Phase 3 Fitness Domain, 5-Sphere Livi
 
 ## Change Log
 
+### [v3.4.0] — 2026-11-16
+- Implemented Global CRUD Management & Cross-Module Synchronization:
+  - **Daily Quests**: Added `PATCH /api/quests/[id]` and `DELETE /api/quests/[id]`, 3-dot action menu on `QuestCard`, `CreateQuestModal` re-configuration support, and safe deletion with `ConfirmDeleteModal` (preserves historical completion logs & XP transactions while purging uncompleted occurrences).
+  - **Task Engine**: Added 3-dot action menu on `TaskCard` with Edit, Archive/Restore, and Safe Delete; updated `TaskModal` to support directive editing; added Archived toggle filter on `/tasks`.
+  - **Habit Protocol**: Added 3-dot action menu on `HabitCard` with Edit, Pause/Resume, and Safe Delete; updated `HabitModal` to support routine editing.
+  - **Knowledge Archive**: Added 3-dot action menu on `BookmarkCard` with Edit and Safe Delete; updated `BookmarkModal` to support resource editing.
+  - **Expense Audit**: Added `PATCH /api/expenses/[id]`, inline editing in `ExpenseModal`, and safe deletion confirmation dialog with automatic recalculation of today's total spending and daily protocol financial audit status.
+  - **Workout Sessions**: Added `GET /api/workouts/[id]`, `PATCH /api/workouts/[id]`, and `DELETE /api/workouts/[id]`; created dedicated `WorkoutHistoryModal` with session list, split tags, duration, intensity, exercise stats, edit trigger, and safe deletion confirmation.
+  - **Cross-Module Synchronization**: `ProtocolService.syncWorkoutStatus` and `syncExpenseAudit` guarantee that creating, editing, or deleting workouts and expenses immediately synchronizes `gymWorkout`, `auditCompleted`, and `totalSpentToday` in the `DailyProtocol` and dynamically updates overall scores.
+  - **Hunter Rank Shield**: Fortified avatar display styling with fallback glow in `dashboard/page.tsx`.
+  - Verified 39/39 routes compile with 0 TypeScript and build errors.
+- Implemented Dynamic Daily Protocol Management:
+  - New `ProtocolItem` model for user-configurable activity definitions across the 5 Living Spheres.
+  - Transparent auto-seeding of initial 14 default activities for all users.
+  - Date-based immutable activity snapshots in `DailyProtocol.activities`, preserving past historical completion records even when activities are edited, disabled, or soft-deleted.
+  - Dedicated configuration page at `/settings/protocol` with Move Up/Down reordering, Active/Inactive switch, Edit, and Safe-Delete dialogs.
+  - Dashboard `LivingSpheresBoard` dynamically renders activities by sphere while remaining strictly execution-focused (no configuration controls on the dashboard).
+  - Dynamic score evaluation supporting multi-point special trackers (5-prayer pills, gym logging, expense auditing) with legacy fallback.
+  - Verified 39/39 routes compile with zero TypeScript errors.
+
 ### [v3.2.1] — 2026-11-13
 - Restored the iconic glowing Shield rank emblem in the Hunter Profile HUD banner on the Dashboard.
 - Retained the custom `swords.jpg` as the browser favicon and mobile app shortcut icon.

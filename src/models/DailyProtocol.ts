@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
+import { ProtocolSphere, ProtocolItemType } from "./ProtocolItem";
 
 export interface ISpiritualitySphere {
   prayers: {
@@ -47,6 +48,28 @@ export interface IPenaltyProgress {
   isCleared: boolean;
 }
 
+export interface IDailyActivityRecord {
+  itemId: Types.ObjectId;
+  sphere: ProtocolSphere;
+  type: ProtocolItemType;
+  title: string;
+  description?: string;
+  order: number;
+  isCompleted: boolean;
+  completedAt?: Date;
+  subItems?: {
+    fajr?: boolean;
+    dhuhr?: boolean;
+    asr?: boolean;
+    maghrib?: boolean;
+    isha?: boolean;
+  };
+  metadata?: {
+    totalSpentToday?: number;
+    workoutId?: string;
+  };
+}
+
 export interface IDailyProtocol extends Document {
   userId: Types.ObjectId;
   targetDate: string; // YYYY-MM-DD
@@ -55,6 +78,7 @@ export interface IDailyProtocol extends Document {
   physically: IPhysicalSphere;
   emotionally: IEmotionalSphere;
   financially: IFinancialSphere;
+  activities: IDailyActivityRecord[];
   overallScore: number; // 0 - 100%
   inPenaltyZone: boolean;
   penalty: IPenaltyProgress;
@@ -64,6 +88,39 @@ export interface IDailyProtocol extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const DailyActivityRecordSchema = new Schema<IDailyActivityRecord>(
+  {
+    itemId: { type: Schema.Types.ObjectId, required: true },
+    sphere: {
+      type: String,
+      enum: ["SPIRITUALITY", "MENTAL", "PHYSICAL", "EMOTIONAL", "FINANCIAL"],
+      required: true,
+    },
+    type: {
+      type: String,
+      enum: ["CHECKBOX", "PRAYER_TRACKER", "WORKOUT_LOG", "FINANCIAL_AUDIT"],
+      default: "CHECKBOX",
+    },
+    title: { type: String, required: true },
+    description: { type: String, default: "" },
+    order: { type: Number, default: 0 },
+    isCompleted: { type: Boolean, default: false },
+    completedAt: { type: Date, default: null },
+    subItems: {
+      fajr: { type: Boolean, default: false },
+      dhuhr: { type: Boolean, default: false },
+      asr: { type: Boolean, default: false },
+      maghrib: { type: Boolean, default: false },
+      isha: { type: Boolean, default: false },
+    },
+    metadata: {
+      totalSpentToday: { type: Number, default: 0 },
+      workoutId: { type: String, default: "" },
+    },
+  },
+  { _id: false }
+);
 
 const DailyProtocolSchema = new Schema<IDailyProtocol>(
   {
@@ -109,6 +166,10 @@ const DailyProtocolSchema = new Schema<IDailyProtocol>(
     financially: {
       auditCompleted: { type: Boolean, default: false },
       totalSpentToday: { type: Number, default: 0 },
+    },
+    activities: {
+      type: [DailyActivityRecordSchema],
+      default: [],
     },
     overallScore: {
       type: Number,

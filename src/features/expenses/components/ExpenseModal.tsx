@@ -13,8 +13,10 @@ import {
   Users,
   CircleDot,
   Loader2,
+  Edit3,
 } from "lucide-react";
 import { ExpenseCategory, IExpense } from "@/models/Expense";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 interface ExpenseModalProps {
   isOpen: boolean;
@@ -34,6 +36,8 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("FOOD");
   const [description, setDescription] = useState("");
+  const [editingExpense, setEditingExpense] = useState<IExpense | null>(null);
+  const [expenseToDelete, setExpenseToDelete] = useState<IExpense | null>(null);
 
   const { data, isLoading } = useQuery<{
     expenses: IExpense[];
@@ -61,6 +65,32 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses-today"] });
       queryClient.invalidateQueries({ queryKey: ["daily-protocol"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      setAmount("");
+      setDescription("");
+    },
+  });
+
+  const updateExpenseMutation = useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: { amount: number; category: ExpenseCategory; description: string };
+    }) => {
+      const res = await fetch(`/api/expenses/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses-today"] });
+      queryClient.invalidateQueries({ queryKey: ["daily-protocol"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      setEditingExpense(null);
       setAmount("");
       setDescription("");
     },
@@ -76,6 +106,8 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses-today"] });
       queryClient.invalidateQueries({ queryKey: ["daily-protocol"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      setExpenseToDelete(null);
     },
   });
 
@@ -85,11 +117,36 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
     e.preventDefault();
     const num = parseFloat(amount);
     if (isNaN(num) || num <= 0 || !description.trim()) return;
-    createExpenseMutation.mutate({
-      amount: num,
-      category,
-      description: description.trim(),
-    });
+
+    if (editingExpense) {
+      updateExpenseMutation.mutate({
+        id: editingExpense._id.toString(),
+        payload: {
+          amount: num,
+          category,
+          description: description.trim(),
+        },
+      });
+    } else {
+      createExpenseMutation.mutate({
+        amount: num,
+        category,
+        description: description.trim(),
+      });
+    }
+  };
+
+  const startEdit = (item: IExpense) => {
+    setEditingExpense(item);
+    setAmount(item.amount.toString());
+    setCategory(item.category);
+    setDescription(item.description);
+  };
+
+  const cancelEdit = () => {
+    setEditingExpense(null);
+    setAmount("");
+    setDescription("");
   };
 
   return (
@@ -103,16 +160,18 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-white">
-                DAILY FINANCIAL AUDIT
+                {editingExpense ? "EDIT EXPENSE ENTRY" : "DAILY FINANCIAL AUDIT"}
               </h3>
               <p className="text-[10px] sm:text-[11px] text-[#94A3B8]">
-                Log &amp; analyze today&apos;s spending ledger
+                {editingExpense
+                  ? "Update amount, category, or note"
+                  : "Log & analyze today's spending ledger"}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-[#64748B] hover:text-white p-1 rounded transition-colors"
+            className="text-[#64748B] hover:text-white p-1 rounded transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -182,18 +241,31 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
                 onChange={(e) => setDescription(e.target.value)}
                 className="flex-1 px-3 py-2 rounded-lg bg-[#050608] border border-[#1F2435] text-xs text-white placeholder-[#475569] focus:outline-none focus:border-[#00F0FF]"
               />
-              <button
-                type="submit"
-                disabled={createExpenseMutation.isPending}
-                className="px-4 py-2 rounded-lg bg-[#00F0FF]/15 border border-[#00F0FF]/40 text-[#00F0FF] hover:bg-[#00F0FF]/25 text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
-              >
-                {createExpenseMutation.isPending ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Plus className="w-3.5 h-3.5" />
+              <div className="flex gap-2">
+                {editingExpense && (
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="px-3 py-2 rounded-lg border border-[#1F2435] text-[#94A3B8] hover:text-white text-xs font-mono cursor-pointer"
+                  >
+                    Cancel
+                  </button>
                 )}
-                <span>Log Expense</span>
-              </button>
+                <button
+                  type="submit"
+                  disabled={createExpenseMutation.isPending || updateExpenseMutation.isPending}
+                  className="px-4 py-2 rounded-lg bg-[#00F0FF]/15 border border-[#00F0FF]/40 text-[#00F0FF] hover:bg-[#00F0FF]/25 text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                >
+                  {createExpenseMutation.isPending || updateExpenseMutation.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : editingExpense ? (
+                    <Edit3 className="w-3.5 h-3.5" />
+                  ) : (
+                    <Plus className="w-3.5 h-3.5" />
+                  )}
+                  <span>{editingExpense ? "Save" : "Log Expense"}</span>
+                </button>
+              </div>
             </div>
           </div>
         </form>
@@ -216,7 +288,7 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
             data.expenses.map((item) => (
               <div
                 key={item._id.toString()}
-                className="flex items-center justify-between p-2.5 rounded-lg bg-[#050608] border border-[#1F2435] text-xs font-mono gap-2"
+                className="flex items-center justify-between p-2.5 rounded-lg bg-[#050608] border border-[#1F2435] text-xs font-mono gap-2 hover:border-[#1F2435]/80 transition-colors"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -231,8 +303,15 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
                     ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                   <button
-                    onClick={() => deleteExpenseMutation.mutate(item._id.toString())}
-                    className="text-[#64748B] hover:text-rose-400 transition-colors p-1"
+                    onClick={() => startEdit(item)}
+                    className="text-[#64748B] hover:text-[#00F0FF] transition-colors p-1 cursor-pointer"
+                    title="Edit record"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setExpenseToDelete(item)}
+                    className="text-[#64748B] hover:text-rose-400 transition-colors p-1 cursor-pointer"
                     title="Delete record"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -242,6 +321,22 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
             ))
           )}
         </div>
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmDeleteModal
+          isOpen={!!expenseToDelete}
+          onClose={() => setExpenseToDelete(null)}
+          onConfirm={() => {
+            if (expenseToDelete) {
+              deleteExpenseMutation.mutate(expenseToDelete._id.toString());
+            }
+          }}
+          title="DELETE EXPENSE RECORD"
+          itemName={expenseToDelete ? `₹${expenseToDelete.amount} (${expenseToDelete.description})` : "Expense"}
+          description="Are you sure you want to remove this transaction entry from today's ledger?"
+          warningText="Today's financial audit spending total and protocol progress will recalculate automatically."
+          isPending={deleteExpenseMutation.isPending}
+        />
       </div>
     </div>
   );

@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Flame, Plus, Loader2, Sparkles, Trophy } from "lucide-react";
 import { HabitWithToday } from "@/features/habits/services/habit.service";
+import { IHabit } from "@/models/Habit";
 import HabitCard from "@/features/habits/components/HabitCard";
 import HabitModal from "@/features/habits/components/HabitModal";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 import { cn } from "@/lib/utils";
 
 const FILTERS = ["ALL", "DAILY", "WEEKDAYS", "WEEKENDS"];
@@ -13,6 +15,8 @@ const FILTERS = ["ALL", "DAILY", "WEEKDAYS", "WEEKENDS"];
 export default function HabitsPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [habitToEdit, setHabitToEdit] = useState<IHabit | null>(null);
+  const [habitToDelete, setHabitToDelete] = useState<IHabit | null>(null);
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -34,8 +38,8 @@ export default function HabitsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["habits"] });
       queryClient.invalidateQueries({ queryKey: ["progression-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      // Trigger achievement check
       fetch("/api/achievements/check", { method: "POST" }).catch(() => {});
     },
     onSettled: () => {
@@ -60,10 +64,16 @@ export default function HabitsPage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/habits/${id}`, { method: "DELETE" });
-      return res.json();
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to delete habit");
+      }
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["habits"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      setHabitToDelete(null);
     },
   });
 
@@ -88,12 +98,15 @@ export default function HabitsPage() {
             HABIT & STREAK PROTOCOL
           </h1>
           <p className="text-xs text-[#94A3B8] font-mono mt-1">
-            "We are what we repeatedly do. Discipline is your greatest attribute."
+            &ldquo;We are what we repeatedly do. Discipline is your greatest attribute.&rdquo;
           </p>
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setHabitToEdit(null);
+            setIsModalOpen(true);
+          }}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#00F0FF] text-[#090A0F] font-mono font-bold text-xs hover:bg-[#00F0FF]/90 transition-all shadow-[0_0_15px_rgba(0,240,255,0.25)] cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -193,20 +206,46 @@ export default function HabitsPage() {
               onPauseToggle={(id, isPaused) =>
                 pauseMutation.mutate({ id, isPaused })
               }
-              onDelete={(id) => deleteMutation.mutate(id)}
+              onEdit={(h) => {
+                setHabitToEdit(h);
+                setIsModalOpen(true);
+              }}
+              onDelete={(h) => {
+                setHabitToDelete(h);
+              }}
             />
           ))}
         </div>
       )}
 
-      {/* Create Habit Modal */}
+      {/* Create / Edit Habit Modal */}
       <HabitModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        habitToEdit={habitToEdit}
+        onClose={() => {
+          setIsModalOpen(false);
+          setHabitToEdit(null);
+        }}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["habits"] });
           queryClient.invalidateQueries({ queryKey: ["progression-stats"] });
         }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!habitToDelete}
+        onClose={() => setHabitToDelete(null)}
+        onConfirm={() => {
+          if (habitToDelete) {
+            deleteMutation.mutate(habitToDelete._id.toString());
+          }
+        }}
+        title="DELETE HABIT PROTOCOL"
+        itemName={habitToDelete?.title || "Habit"}
+        description="Are you sure you want to permanently remove this habit directive?"
+        warningText="All historical completion streaks and lifetime XP gained from this habit will remain safely preserved in your progression ledger."
+        isPending={deleteMutation.isPending}
       />
     </div>
   );
