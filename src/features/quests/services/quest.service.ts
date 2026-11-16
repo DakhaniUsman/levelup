@@ -8,7 +8,7 @@ import QuestOccurrence, {
   IQuestOccurrence,
 } from "@/models/QuestOccurrence";
 import QuestCompletion from "@/models/QuestCompletion";
-import { CreateQuestInput } from "../schemas/quest.schema";
+import { CreateQuestInput, UpdateQuestInput } from "../schemas/quest.schema";
 import { XPService } from "@/features/progression/services/xp.service";
 
 export interface PopulatedOccurrence extends Omit<IQuestOccurrence, "questId"> {
@@ -207,6 +207,64 @@ export class QuestService {
       xpEarned: xpResult.isNewReward ? quest.xpReward : 0,
       alreadyCompleted: false,
     };
+  }
+
+  /**
+   * Updates an existing quest definition.
+   * Past completed occurrences and historical XP transactions remain untouched.
+   */
+  static async updateQuest(
+    questId: string,
+    userId: string | Types.ObjectId,
+    input: UpdateQuestInput
+  ): Promise<IQuest | null> {
+    await dbConnect();
+    const userObjId =
+      typeof userId === "string" ? new Types.ObjectId(userId) : userId;
+
+    const quest = await Quest.findOne({ _id: questId, userId: userObjId });
+    if (!quest) return null;
+
+    if (input.title !== undefined) quest.title = input.title.trim();
+    if (input.description !== undefined) quest.description = input.description.trim();
+    if (input.category !== undefined) quest.category = input.category;
+    if (input.difficulty !== undefined) {
+      quest.difficulty = input.difficulty;
+      quest.xpReward = QUEST_DIFFICULTY_XP[input.difficulty] || quest.xpReward;
+    }
+    if (input.frequency !== undefined) quest.frequency = input.frequency;
+
+    await quest.save();
+    return quest;
+  }
+
+  /**
+   * Soft-deletes a quest and removes pending future occurrences.
+   * Completed historical occurrences and XP transactions are preserved intact.
+   */
+  static async deleteQuest(
+    questId: string,
+    userId: string | Types.ObjectId
+  ): Promise<boolean> {
+    await dbConnect();
+    const userObjId =
+      typeof userId === "string" ? new Types.ObjectId(userId) : userId;
+
+    const quest = await Quest.findOne({ _id: questId, userId: userObjId });
+    if (!quest) return false;
+
+    // Soft delete the quest
+    quest.isActive = false;
+    await quest.save();
+
+    // Clean up uncompleted occurrences only; historical completions stay intact
+    await QuestOccurrence.deleteMany({
+      questId: quest._id,
+      userId: userObjId,
+      status: "PENDING",
+    });
+
+    return true;
   }
 }
 

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { X, CheckSquare, Loader2 } from "lucide-react";
-import { TaskCategory, TaskPriority } from "@/models/Task";
+import { useState, useEffect } from "react";
+import { X, CheckSquare, Loader2, Edit3 } from "lucide-react";
+import { ITask, TaskCategory, TaskPriority } from "@/models/Task";
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  taskToEdit?: ITask | null;
 }
 
 const CATEGORIES: TaskCategory[] = [
@@ -22,7 +23,12 @@ const CATEGORIES: TaskCategory[] = [
 
 const PRIORITIES: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
-export default function TaskModal({ isOpen, onClose, onSuccess }: TaskModalProps) {
+export default function TaskModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  taskToEdit,
+}: TaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<TaskCategory>("PERSONAL");
@@ -32,6 +38,28 @@ export default function TaskModal({ isOpen, onClose, onSuccess }: TaskModalProps
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (taskToEdit) {
+      setTitle(taskToEdit.title || "");
+      setDescription(taskToEdit.description || "");
+      setCategory(taskToEdit.category || "PERSONAL");
+      setPriority(taskToEdit.priority || "MEDIUM");
+      setDueDate(
+        taskToEdit.dueDate
+          ? new Date(taskToEdit.dueDate).toISOString().split("T")[0]
+          : ""
+      );
+      setEstimatedMinutes(taskToEdit.estimatedMinutes || 30);
+    } else {
+      setTitle("");
+      setDescription("");
+      setCategory("PERSONAL");
+      setPriority("MEDIUM");
+      setDueDate("");
+      setEstimatedMinutes(30);
+    }
+  }, [taskToEdit, isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,8 +68,13 @@ export default function TaskModal({ isOpen, onClose, onSuccess }: TaskModalProps
     setError(null);
 
     try {
-      const res = await fetch("/api/tasks", {
-        method: "POST",
+      const url = taskToEdit
+        ? `/api/tasks/${taskToEdit._id}`
+        : "/api/tasks";
+      const method = taskToEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
@@ -55,20 +88,16 @@ export default function TaskModal({ isOpen, onClose, onSuccess }: TaskModalProps
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to create task");
+        throw new Error(data.message || `Failed to ${taskToEdit ? "update" : "create"} directive`);
       }
 
       onSuccess();
       onClose();
-      // Reset form
-      setTitle("");
-      setDescription("");
-      setDueDate("");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Failed to create task");
+        setError(`Failed to ${taskToEdit ? "update" : "create"} directive`);
       }
     } finally {
       setIsLoading(false);
@@ -80,12 +109,20 @@ export default function TaskModal({ isOpen, onClose, onSuccess }: TaskModalProps
       <div className="hud-card w-full max-w-lg p-4 sm:p-6 rounded-2xl border border-[#1F2435] shadow-2xl relative max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-[#1F2435]">
           <div className="flex items-center gap-2 text-[#00F0FF] font-mono text-sm font-bold">
-            <CheckSquare className="w-4 h-4" />
-            <span>CREATE NEW TASK</span>
+            {taskToEdit ? (
+              <Edit3 className="w-4 h-4" />
+            ) : (
+              <CheckSquare className="w-4 h-4" />
+            )}
+            <span>
+              {taskToEdit
+                ? "RECONFIGURE TACTICAL DIRECTIVE"
+                : "INITIALIZE NEW DIRECTIVE"}
+            </span>
           </div>
           <button
             onClick={onClose}
-            className="text-[#64748B] hover:text-white p-1 rounded-lg"
+            className="text-[#64748B] hover:text-white p-1 rounded-lg cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -100,27 +137,27 @@ export default function TaskModal({ isOpen, onClose, onSuccess }: TaskModalProps
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 font-mono text-xs">
           <div>
             <label className="block text-[#94A3B8] uppercase tracking-wider mb-1">
-              Task Directive (Title) *
+              Directive Objective (Title) *
             </label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Master Mongoose compound indexing"
+              placeholder="e.g. Audit API authentication pipeline"
               className="w-full px-3.5 py-2.5 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-sm focus:border-[#00F0FF] focus:outline-none"
             />
           </div>
 
           <div>
             <label className="block text-[#94A3B8] uppercase tracking-wider mb-1">
-              Brief / Notes (Optional)
+              Description / Notes (Optional)
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add key milestones or requirements..."
+              placeholder="Detailed parameters and acceptance criteria..."
               className="w-full px-3.5 py-2 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-sm focus:border-[#00F0FF] focus:outline-none resize-none"
             />
           </div>
@@ -176,12 +213,13 @@ export default function TaskModal({ isOpen, onClose, onSuccess }: TaskModalProps
 
             <div>
               <label className="block text-[#94A3B8] uppercase tracking-wider mb-1">
-                Est. Duration (Mins)
+                Est. Duration (Minutes)
               </label>
               <input
                 type="number"
                 min={5}
                 max={480}
+                step={5}
                 value={estimatedMinutes}
                 onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
                 className="w-full px-3 py-2 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white focus:border-[#00F0FF] focus:outline-none"
@@ -193,17 +231,18 @@ export default function TaskModal({ isOpen, onClose, onSuccess }: TaskModalProps
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-[#1F2435] text-[#94A3B8] hover:text-white"
+              disabled={isLoading}
+              className="px-4 py-2 rounded-lg border border-[#1F2435] text-[#94A3B8] hover:text-white cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-5 py-2 rounded-lg bg-[#00F0FF] text-[#090A0F] font-bold hover:bg-[#00F0FF]/90 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2 rounded-lg bg-[#00F0FF] text-[#090A0F] font-bold hover:bg-[#00F0FF]/90 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-[0_0_15px_rgba(0,240,255,0.3)]"
             >
               {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>INITIALIZE TASK</span>
+              <span>{taskToEdit ? "UPDATE DIRECTIVE" : "CREATE DIRECTIVE"}</span>
             </button>
           </div>
         </form>

@@ -2,25 +2,30 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, CheckSquare, Filter, Loader2 } from "lucide-react";
-import { ITask, TaskCategory, TaskStatus } from "@/models/Task";
+import { Plus, Search, CheckSquare, Filter, Loader2, Archive } from "lucide-react";
+import { ITask } from "@/models/Task";
 import TaskCard from "@/features/tasks/components/TaskCard";
 import TaskModal from "@/features/tasks/components/TaskModal";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<ITask | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<ITask | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [showArchived, setShowArchived] = useState<boolean>(false);
   const [search, setSearch] = useState("");
 
   const { data: tasks = [], isLoading } = useQuery<ITask[]>({
-    queryKey: ["tasks", statusFilter, categoryFilter, search],
+    queryKey: ["tasks", statusFilter, categoryFilter, search, showArchived],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (categoryFilter !== "ALL") params.set("category", categoryFilter);
       if (search.trim()) params.set("search", search.trim());
+      params.set("isArchived", showArchived ? "true" : "false");
 
       const res = await fetch(`/api/tasks?${params.toString()}`);
       const json = await res.json();
@@ -39,17 +44,40 @@ export default function TasksPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["progression-stats"] });
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async ({ id, isArchived }: { id: string; isArchived: boolean }) => {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isArchived }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-      return res.json();
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to delete task");
+      }
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["progression-stats"] });
+      setTaskToDelete(null);
     },
   });
 
@@ -67,13 +95,30 @@ export default function TasksPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#00F0FF] text-[#090A0F] font-mono font-bold text-xs hover:bg-[#00F0FF]/90 transition-all shadow-[0_0_15px_rgba(0,240,255,0.25)] cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>NEW DIRECTIVE</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border font-mono text-xs transition-all cursor-pointer ${
+              showArchived
+                ? "bg-amber-950/40 border-amber-500/50 text-amber-300"
+                : "bg-[#131620] border-[#1F2435] text-[#94A3B8] hover:text-white"
+            }`}
+          >
+            <Archive className="w-3.5 h-3.5" />
+            <span>{showArchived ? "Hide Archived" : "Show Archived"}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setTaskToEdit(null);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#00F0FF] text-[#090A0F] font-mono font-bold text-xs hover:bg-[#00F0FF]/90 transition-all shadow-[0_0_15px_rgba(0,240,255,0.25)] cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>NEW DIRECTIVE</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -170,17 +215,49 @@ export default function TasksPage() {
               key={task._id.toString()}
               task={task}
               onToggleStatus={(id, status) => updateMutation.mutate({ id, status })}
-              onDelete={(id) => deleteMutation.mutate(id)}
+              onEdit={(t) => {
+                setTaskToEdit(t);
+                setIsModalOpen(true);
+              }}
+              onToggleArchive={(t) => {
+                archiveMutation.mutate({ id: t._id.toString(), isArchived: !t.isArchived });
+              }}
+              onDelete={(t) => {
+                setTaskToDelete(t);
+              }}
             />
           ))}
         </div>
       )}
 
-      {/* Task Creation Modal */}
+      {/* Task Creation & Edit Modal */}
       <TaskModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["tasks"] })}
+        taskToEdit={taskToEdit}
+        onClose={() => {
+          setIsModalOpen(false);
+          setTaskToEdit(null);
+        }}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!taskToDelete}
+        onClose={() => setTaskToDelete(null)}
+        onConfirm={() => {
+          if (taskToDelete) {
+            deleteMutation.mutate(taskToDelete._id.toString());
+          }
+        }}
+        title="DELETE DIRECTIVE"
+        itemName={taskToDelete?.title || "Directive"}
+        description="Are you sure you want to permanently delete this tactical directive?"
+        warningText="Historical XP transactions previously awarded for completing this directive will remain safely preserved in your ledger."
+        isPending={deleteMutation.isPending}
       />
     </div>
   );

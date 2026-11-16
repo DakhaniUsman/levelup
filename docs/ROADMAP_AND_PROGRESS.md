@@ -12,6 +12,7 @@
 | **Phase 1** | Core Foundation (Auth, HUD, Tasks, Quests, Knowledge, XP Engine) | ✅ **COMPLETED** | Nov 13, 2026 |
 | **Phase 2** | Personal Progression (Habits, Streaks, Achievements, Notifications) | ✅ **COMPLETED** | Nov 13, 2026 |
 | **Phase 3** | Fitness Domain & 5-Sphere Living Protocol (Solo Leveling Penalty, Judgement, Workouts, Expenses) | ✅ **COMPLETED** | Nov 13, 2026 |
+| **System Alerts** | Web Push Notifications, Daily Reminders & Hunter Accountability Engine | ✅ **COMPLETED** | Nov 16, 2026 |
 | **Phase 4** | Advanced Analytics & Battle Records (Recharts, Reports) | ⏳ **PENDING** | — |
 | **Phase 5** | Yui AI Companion (Accountability Assistant) | ⏳ **PENDING** | — |
 | **Phase 6** | Automation & System Polish | ⏳ **PENDING** | — |
@@ -138,6 +139,26 @@ The following files represent the verified Phase 3 Fitness Domain, 5-Sphere Livi
 
 ## Change Log
 
+### [v3.4.0] — 2026-11-16
+- Implemented Global CRUD Management & Cross-Module Synchronization:
+  - **Daily Quests**: Added `PATCH /api/quests/[id]` and `DELETE /api/quests/[id]`, 3-dot action menu on `QuestCard`, `CreateQuestModal` re-configuration support, and safe deletion with `ConfirmDeleteModal` (preserves historical completion logs & XP transactions while purging uncompleted occurrences).
+  - **Task Engine**: Added 3-dot action menu on `TaskCard` with Edit, Archive/Restore, and Safe Delete; updated `TaskModal` to support directive editing; added Archived toggle filter on `/tasks`.
+  - **Habit Protocol**: Added 3-dot action menu on `HabitCard` with Edit, Pause/Resume, and Safe Delete; updated `HabitModal` to support routine editing.
+  - **Knowledge Archive**: Added 3-dot action menu on `BookmarkCard` with Edit and Safe Delete; updated `BookmarkModal` to support resource editing.
+  - **Expense Audit**: Added `PATCH /api/expenses/[id]`, inline editing in `ExpenseModal`, and safe deletion confirmation dialog with automatic recalculation of today's total spending and daily protocol financial audit status.
+  - **Workout Sessions**: Added `GET /api/workouts/[id]`, `PATCH /api/workouts/[id]`, and `DELETE /api/workouts/[id]`; created dedicated `WorkoutHistoryModal` with session list, split tags, duration, intensity, exercise stats, edit trigger, and safe deletion confirmation.
+  - **Cross-Module Synchronization**: `ProtocolService.syncWorkoutStatus` and `syncExpenseAudit` guarantee that creating, editing, or deleting workouts and expenses immediately synchronizes `gymWorkout`, `auditCompleted`, and `totalSpentToday` in the `DailyProtocol` and dynamically updates overall scores.
+  - **Hunter Rank Shield**: Fortified avatar display styling with fallback glow in `dashboard/page.tsx`.
+  - Verified 39/39 routes compile with 0 TypeScript and build errors.
+- Implemented Dynamic Daily Protocol Management:
+  - New `ProtocolItem` model for user-configurable activity definitions across the 5 Living Spheres.
+  - Transparent auto-seeding of initial 14 default activities for all users.
+  - Date-based immutable activity snapshots in `DailyProtocol.activities`, preserving past historical completion records even when activities are edited, disabled, or soft-deleted.
+  - Dedicated configuration page at `/settings/protocol` with Move Up/Down reordering, Active/Inactive switch, Edit, and Safe-Delete dialogs.
+  - Dashboard `LivingSpheresBoard` dynamically renders activities by sphere while remaining strictly execution-focused (no configuration controls on the dashboard).
+  - Dynamic score evaluation supporting multi-point special trackers (5-prayer pills, gym logging, expense auditing) with legacy fallback.
+  - Verified 39/39 routes compile with zero TypeScript errors.
+
 ### [v3.2.1] — 2026-11-13
 - Restored the iconic glowing Shield rank emblem in the Hunter Profile HUD banner on the Dashboard.
 - Retained the custom `swords.jpg` as the browser favicon and mobile app shortcut icon.
@@ -148,7 +169,21 @@ The following files represent the verified Phase 3 Fitness Domain, 5-Sphere Livi
 - Integrated `swords.jpg` brand icon into the sidebar, mobile header, login screen, register screen, and hunter profile avatar.
 - Documented deployment and hosting guide for global 24/7 cloud access.
 
-### [v3.1.0] — 2026-11-13
+### [v3.3.0] — 2026-11-16
+- **System Alerts & Web Push Notifications [COMPLETED & SEALED]**:
+  - Implemented W3C Web Push with VAPID authentication and server-side encryption via `web-push`.
+  - Service Worker (`public/sw.js`) and PWA Web App Manifest (`public/manifest.json`) for Android & iOS Home Screen lock-screen notifications.
+  - Added Mongoose models: `DeviceSubscription`, `NotificationPreference`, `NotificationDispatchLog` (with 7-day TTL).
+  - Developed `PushService` for multi-device push distribution and automated 410/404 dead subscription pruning.
+  - Developed `AccountabilityService` (Timezone-aware reminder engine, Quiet Hours guard, completion-aware suppression, and deduplication).
+  - Wired event-triggered push alerts into `XPService.awardXP` (Level Up, Rank Advancement) and `AchievementService` (Trophy unlocks).
+  - Created dedicated settings page at `/settings/notifications` with device linking, instant test push, category toggles, schedule inputs, and quiet hours.
+  - Created scheduled cron endpoint `/api/cron/reminders` with `CRON_SECRET` authorization.
+  - Enhanced Hunter HUD avatar box with electric cyan neon glow and dynamic Hunter Rank aura scaling.
+
+### [v3.2.0] — 2026-11-16
+- Completed Global CRUD Management & Cross-Module Data Synchronization.
+
 - Converted all monetary units and ledgers from USD ($) to Indian Rupee (₹) with Indian currency formatting.
 - Integrated full mobile responsive navigation suite:
   - Mobile slide-over drawer sidebar with backdrop blur and auto-close.

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings, Save, Loader2, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { Settings, Save, Loader2, CheckCircle2, Sliders, ArrowRight, Bell } from "lucide-react";
 import { SafeUser } from "@/features/auth/services/auth.service";
 
 export default function SettingsPage() {
@@ -82,6 +83,54 @@ export default function SettingsPage() {
           <span>Profile configuration updated successfully.</span>
         </div>
       )}
+
+      {/* Daily Protocol Configuration Card */}
+      <div className="hud-card p-6 sm:p-7 rounded-2xl border border-[#00F0FF]/30 shadow-[0_0_20px_rgba(0,240,255,0.06)] font-mono space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-[#00F0FF]" />
+              <h2 className="text-base font-bold text-white uppercase tracking-wider">
+                DAILY PROTOCOL CONFIGURATION
+              </h2>
+            </div>
+            <p className="text-xs text-[#94A3B8]">
+              Customize, add, reorder, or disable activities across your 5 Living Spheres
+            </p>
+          </div>
+          <Link
+            href="/settings/protocol"
+            className="px-4 py-2.5 rounded-xl bg-[#00F0FF]/15 border border-[#00F0FF]/40 text-[#00F0FF] hover:bg-[#00F0FF]/25 font-bold text-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-[0_0_12px_rgba(0,240,255,0.2)]"
+          >
+            <span>Configure 5 Spheres</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+
+      {/* System Alerts & Push Telemetry Card */}
+      <div className="hud-card p-6 sm:p-7 rounded-2xl border border-[#8A2BE2]/30 shadow-[0_0_20px_rgba(138,43,226,0.06)] font-mono space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-[#8A2BE2]" />
+              <h2 className="text-base font-bold text-white uppercase tracking-wider">
+                SYSTEM ALERTS & MOBILE PUSH
+              </h2>
+            </div>
+            <p className="text-xs text-[#94A3B8]">
+              Configure mobile lock-screen alerts, quiet hours, and daily accountability reminders
+            </p>
+          </div>
+          <Link
+            href="/settings/notifications"
+            className="px-4 py-2.5 rounded-xl bg-[#8A2BE2]/15 border border-[#8A2BE2]/40 text-purple-200 hover:bg-[#8A2BE2]/25 font-bold text-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-[0_0_12px_rgba(138,43,226,0.2)]"
+          >
+            <span>Manage Alerts</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
 
       <form
         onSubmit={handleSubmit}

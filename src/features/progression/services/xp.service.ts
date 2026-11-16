@@ -9,6 +9,7 @@ import {
   calculateProgression,
   LevelCalculation,
 } from "../constants/ranks";
+import { AccountabilityService } from "@/features/notifications/services/accountability.service";
 
 export interface AwardXPParams {
   userId: string | Types.ObjectId;
@@ -48,6 +49,13 @@ export class XPService {
       return { transaction: existing, isNewReward: false };
     }
 
+    // Measure pre-award lifetime XP for level up detection
+    const prevAggregate = await XPTransaction.aggregate([
+      { $match: { userId: userObjId } },
+      { $group: { _id: null, totalXP: { $sum: "$amount" } } },
+    ]);
+    const prevXP = prevAggregate[0]?.totalXP || 0;
+
     try {
       const transaction = await XPTransaction.create({
         userId: userObjId,
@@ -58,6 +66,37 @@ export class XPService {
         idempotencyKey,
         description: params.description,
       });
+
+      // Check for Level Up and Rank Advancement
+      const newXP = prevXP + params.amount;
+      const prevProg = calculateProgression(prevXP);
+      const newProg = calculateProgression(newXP);
+
+      if (newProg.level > prevProg.level) {
+        AccountabilityService.dispatchAlert({
+          userId: userObjId,
+          dedupeKey: `level_up_${newProg.level}_${userObjId.toString()}`,
+          category: "progression",
+          title: `HUNTER ASCENSION: LEVEL ${newProg.level}!`,
+          message: `System Alert: Hunter level increased to ${newProg.level}. Next milestone: Level ${newProg.level + 1}.`,
+          url: "/progression",
+          type: "LEVEL_UP",
+          bypassQuietHours: true,
+        }).catch((e: any) => console.error("Level up alert error:", e.message));
+      }
+
+      if (newProg.rank.code !== prevProg.rank.code) {
+        AccountabilityService.dispatchAlert({
+          userId: userObjId,
+          dedupeKey: `rank_up_${newProg.rank.code}_${userObjId.toString()}`,
+          category: "progression",
+          title: `RANK ADVANCEMENT: ${newProg.rank.name.toUpperCase()}!`,
+          message: `The System has acknowledged your power. You have ascended to ${newProg.rank.name} (${newProg.rank.title})!`,
+          url: "/progression",
+          type: "LEVEL_UP",
+          bypassQuietHours: true,
+        }).catch((e: any) => console.error("Rank up alert error:", e.message));
+      }
 
       return { transaction, isNewReward: true };
     } catch (error: unknown) {

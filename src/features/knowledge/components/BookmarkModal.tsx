@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { X, BookOpen, Loader2 } from "lucide-react";
-import { BookmarkCategory } from "@/models/Bookmark";
+import { useState, useEffect } from "react";
+import { X, BookOpen, Loader2, Edit3 } from "lucide-react";
+import { IBookmark, BookmarkCategory } from "@/models/Bookmark";
 
 interface BookmarkModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  bookmarkToEdit?: IBookmark | null;
 }
 
 const CATEGORIES: BookmarkCategory[] = [
@@ -25,6 +26,7 @@ export default function BookmarkModal({
   isOpen,
   onClose,
   onSuccess,
+  bookmarkToEdit,
 }: BookmarkModalProps) {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
@@ -35,6 +37,26 @@ export default function BookmarkModal({
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (bookmarkToEdit) {
+      setTitle(bookmarkToEdit.title || "");
+      setUrl(bookmarkToEdit.url || "");
+      setDescription(bookmarkToEdit.description || "");
+      setNotes(bookmarkToEdit.notes || "");
+      setCategory(bookmarkToEdit.category || "PROGRAMMING");
+      setTagsInput(bookmarkToEdit.tags?.join(", ") || "");
+      setIsFavorite(Boolean(bookmarkToEdit.isFavorite));
+    } else {
+      setTitle("");
+      setUrl("");
+      setDescription("");
+      setNotes("");
+      setCategory("PROGRAMMING");
+      setTagsInput("");
+      setIsFavorite(false);
+    }
+  }, [bookmarkToEdit, isOpen]);
 
   if (!isOpen) return null;
 
@@ -49,8 +71,13 @@ export default function BookmarkModal({
       .filter(Boolean);
 
     try {
-      const res = await fetch("/api/knowledge", {
-        method: "POST",
+      const endpoint = bookmarkToEdit
+        ? `/api/knowledge/${bookmarkToEdit._id}`
+        : "/api/knowledge";
+      const method = bookmarkToEdit ? "PATCH" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
@@ -65,21 +92,16 @@ export default function BookmarkModal({
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to save bookmark");
+        throw new Error(data.message || `Failed to ${bookmarkToEdit ? "update" : "save"} bookmark`);
       }
 
       onSuccess();
       onClose();
-      setTitle("");
-      setUrl("");
-      setDescription("");
-      setNotes("");
-      setTagsInput("");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Failed to save bookmark");
+        setError(`Failed to ${bookmarkToEdit ? "update" : "save"} bookmark`);
       }
     } finally {
       setIsLoading(false);
@@ -91,12 +113,20 @@ export default function BookmarkModal({
       <div className="hud-card w-full max-w-lg p-4 sm:p-6 rounded-2xl border border-[#1F2435] shadow-2xl relative max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-[#1F2435]">
           <div className="flex items-center gap-2 text-[#00F0FF] font-mono text-sm font-bold">
-            <BookOpen className="w-4 h-4" />
-            <span>ARCHIVE KNOWLEDGE RESOURCE</span>
+            {bookmarkToEdit ? (
+              <Edit3 className="w-4 h-4 text-[#00F0FF]" />
+            ) : (
+              <BookOpen className="w-4 h-4" />
+            )}
+            <span>
+              {bookmarkToEdit
+                ? "RECONFIGURE KNOWLEDGE RESOURCE"
+                : "ARCHIVE KNOWLEDGE RESOURCE"}
+            </span>
           </div>
           <button
             onClick={onClose}
-            className="text-[#64748B] hover:text-white p-1 rounded-lg"
+            className="text-[#64748B] hover:text-white p-1 rounded-lg cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -111,29 +141,29 @@ export default function BookmarkModal({
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 font-mono text-xs">
           <div>
             <label className="block text-[#94A3B8] uppercase tracking-wider mb-1">
-              Resource Title *
+              Title *
             </label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Distributed Consensus Explained"
-              className="w-full px-3.5 py-2 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-sm focus:border-[#00F0FF] focus:outline-none"
+              placeholder="e.g. Next.js 15 App Router Architecture Guide"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-sm focus:border-[#00F0FF] focus:outline-none"
             />
           </div>
 
           <div>
             <label className="block text-[#94A3B8] uppercase tracking-wider mb-1">
-              Resource URL *
+              URL / Link *
             </label>
             <input
               type="url"
               required
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full px-3.5 py-2 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-sm focus:border-[#00F0FF] focus:outline-none"
+              placeholder="https://nextjs.org/docs"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-sm focus:border-[#00F0FF] focus:outline-none"
             />
           </div>
 
@@ -163,7 +193,7 @@ export default function BookmarkModal({
                 type="text"
                 value={tagsInput}
                 onChange={(e) => setTagsInput(e.target.value)}
-                placeholder="architecture, raft, nodejs"
+                placeholder="react, fullstack, nextjs"
                 className="w-full px-3 py-2 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white focus:border-[#00F0FF] focus:outline-none"
               />
             </div>
@@ -171,13 +201,26 @@ export default function BookmarkModal({
 
           <div>
             <label className="block text-[#94A3B8] uppercase tracking-wider mb-1">
-              Key Insights & Notes (Optional)
+              Description (Optional)
+            </label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief overview of the resource..."
+              className="w-full px-3.5 py-2 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-sm focus:border-[#00F0FF] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[#94A3B8] uppercase tracking-wider mb-1">
+              Personal Notes & Takeaways (Optional)
             </label>
             <textarea
-              rows={3}
+              rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Summarize key takeaways for quick recall..."
+              placeholder="Key concepts to review..."
               className="w-full px-3.5 py-2 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-sm focus:border-[#00F0FF] focus:outline-none resize-none"
             />
           </div>
@@ -185,13 +228,16 @@ export default function BookmarkModal({
           <div className="flex items-center gap-2 pt-1">
             <input
               type="checkbox"
-              id="fav"
+              id="favorite"
               checked={isFavorite}
               onChange={(e) => setIsFavorite(e.target.checked)}
-              className="w-4 h-4 rounded border-[#1F2435] bg-[#090A0F] text-[#00F0FF] focus:ring-0"
+              className="rounded border-[#1F2435] bg-[#090A0F] text-[#00F0FF] focus:ring-0 cursor-pointer"
             />
-            <label htmlFor="fav" className="text-[#94A3B8] cursor-pointer">
-              Mark as Favorite Codex Resource
+            <label
+              htmlFor="favorite"
+              className="text-xs text-[#94A3B8] cursor-pointer font-mono"
+            >
+              Star as Priority Knowledge Bookmark
             </label>
           </div>
 
@@ -199,17 +245,18 @@ export default function BookmarkModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-[#1F2435] text-[#94A3B8] hover:text-white"
+              disabled={isLoading}
+              className="px-4 py-2 rounded-lg border border-[#1F2435] text-[#94A3B8] hover:text-white cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-5 py-2 rounded-lg bg-[#00F0FF] text-[#090A0F] font-bold hover:bg-[#00F0FF]/90 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2 rounded-lg bg-[#00F0FF] text-[#090A0F] font-bold hover:bg-[#00F0FF]/90 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-[0_0_15px_rgba(0,240,255,0.3)]"
             >
               {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>SAVE ARCHIVE</span>
+              <span>{bookmarkToEdit ? "UPDATE RESOURCE" : "SAVE TO ARCHIVE"}</span>
             </button>
           </div>
         </form>

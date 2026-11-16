@@ -6,10 +6,16 @@ import GlowCursor from "@/components/ui/GlowCursor";
 export const metadata: Metadata = {
   title: "LEVEL UP — Personal Life Operating System",
   description: "Futuristic RPG Personal Progression & Life OS",
+  manifest: "/manifest.json",
   icons: {
     icon: "/swords.jpg",
     shortcut: "/swords.jpg",
     apple: "/swords.jpg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "LEVEL UP",
   },
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import {
   Sparkles,
   BookOpen,
@@ -11,10 +12,10 @@ import {
   Skull,
   Receipt,
   Flame,
-  Moon,
   Check,
+  Settings,
 } from "lucide-react";
-import { IDailyProtocol } from "@/models/DailyProtocol";
+import { IDailyProtocol, IDailyActivityRecord } from "@/models/DailyProtocol";
 
 interface LivingSpheresBoardProps {
   protocol: IDailyProtocol | null;
@@ -52,25 +53,25 @@ export default function LivingSpheresBoard({
 
   const score = protocol.overallScore || 0;
   const isTransgressed = protocol.isTransgressed;
+  const activities = protocol.activities || [];
 
-  // Toggle helper
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleToggle = (path: string, currentVal: boolean) => {
-    const parts = path.split(".");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload: any = {};
-    if (parts.length === 2) {
-      payload[parts[0]] = { [parts[1]]: !currentVal };
-    } else if (parts.length === 3) {
-      payload[parts[0]] = {
-        [parts[1]]: { [parts[2]]: !currentVal },
-      };
-    }
-    updateMutation.mutate(payload);
+  const handleToggleDynamic = (itemId: string, currentVal: boolean) => {
+    updateMutation.mutate({ itemId, isCompleted: !currentVal });
   };
 
-  // Prayers completed count
-  const prayers = protocol.spirituality?.prayers || {
+  const handleTogglePrayer = (itemId: string, subKey: string, currentVal: boolean) => {
+    updateMutation.mutate({ itemId, subKey, subValue: !currentVal });
+  };
+
+  const getSphereActivities = (sphereName: string): IDailyActivityRecord[] => {
+    return activities
+      .filter((a) => a.sphere === sphereName)
+      .sort((a, b) => a.order - b.order);
+  };
+
+  // Prayer counter helper
+  const prayerActivity = activities.find((a) => a.type === "PRAYER_TRACKER");
+  const prayers = prayerActivity?.subItems || protocol.spirituality?.prayers || {
     fajr: false,
     dhuhr: false,
     asr: false,
@@ -78,6 +79,12 @@ export default function LivingSpheresBoard({
     isha: false,
   };
   const prayerCount = Object.values(prayers).filter(Boolean).length;
+
+  const spiritualActs = getSphereActivities("SPIRITUALITY");
+  const mentalActs = getSphereActivities("MENTAL");
+  const physicalActs = getSphereActivities("PHYSICAL");
+  const emotionalActs = getSphereActivities("EMOTIONAL");
+  const financialActs = getSphereActivities("FINANCIAL");
 
   return (
     <div className="space-y-4 font-mono">
@@ -103,11 +110,11 @@ export default function LivingSpheresBoard({
             1% BETTER EVERY DAY — LIVING SYSTEM
           </h2>
           <p className="text-[11px] sm:text-xs text-[#94A3B8]">
-            Master your routine across Spirituality, Mental, Physical, Emotional &amp; Financial growth.
+            Master your daily routine across Spirituality, Mental, Physical, Emotional &amp; Financial growth.
           </p>
         </div>
 
-        {/* Score & System Judgement Button */}
+        {/* Score & Controls */}
         <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#1F2435]">
           <div className="text-left md:text-right">
             <div className="text-[9px] sm:text-[10px] text-[#64748B] uppercase tracking-wider">
@@ -128,13 +135,23 @@ export default function LivingSpheresBoard({
 
           <div className="h-8 w-px bg-[#1F2435]" />
 
+          {/* Quick Settings Shortcut */}
+          <Link
+            href="/settings/protocol"
+            title="Configure Daily Protocol Activities"
+            className="p-2 rounded-xl bg-[#131620] hover:bg-[#1F2435] border border-[#1F2435] hover:border-[#00F0FF]/40 text-[#94A3B8] hover:text-[#00F0FF] transition-all cursor-pointer"
+          >
+            <Settings className="w-4 h-4" />
+          </Link>
+
+          {/* System Judgement Button */}
           <button
             onClick={onOpenJudgementModal}
             title="Declare Sin / Broken Vow (Purges today's XP and resets streaks)"
             className="px-3 py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 hover:border-rose-600 text-rose-400 hover:text-rose-300 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_15px_rgba(225,29,72,0.2)]"
           >
             <Skull className="w-4 h-4 text-rose-500" />
-            <span>System Judgement</span>
+            <span className="hidden sm:inline">System Judgement</span>
           </button>
         </div>
       </div>
@@ -150,89 +167,86 @@ export default function LivingSpheresBoard({
                 SPIRITUALITY
               </h3>
             </div>
-            <span className="text-[10px] text-purple-300 font-bold bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/40">
-              {prayerCount}/5 Prayers
-            </span>
+            {prayerActivity && (
+              <span className="text-[10px] text-purple-300 font-bold bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/40">
+                {prayerCount}/5 Prayers
+              </span>
+            )}
           </div>
 
-          {/* 5 Daily Prayers Pills */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] text-[#94A3B8] uppercase block">
-              5 Daily Prayers:
-            </span>
-            <div className="grid grid-cols-5 gap-1 sm:gap-1.5">
-              {(
-                [
-                  { key: "fajr", label: "Fajr" },
-                  { key: "dhuhr", label: "Dhuhr" },
-                  { key: "asr", label: "Asr" },
-                  { key: "maghrib", label: "Magh" },
-                  { key: "isha", label: "Isha" },
-                ] as const
-              ).map(({ key, label }) => {
-                const isDone = prayers[key];
+          <div className="space-y-2.5 pt-1">
+            {spiritualActs.length === 0 ? (
+              <div className="py-4 text-center text-xs text-[#64748B]">
+                No spiritual activities configured.
+              </div>
+            ) : (
+              spiritualActs.map((act) => {
+                if (act.type === "PRAYER_TRACKER") {
+                  const pr = act.subItems || {
+                    fajr: false,
+                    dhuhr: false,
+                    asr: false,
+                    maghrib: false,
+                    isha: false,
+                  };
+                  return (
+                    <div key={act.itemId.toString()} className="space-y-1.5 pb-1">
+                      <span className="text-[10px] text-[#94A3B8] uppercase block">
+                        {act.title}:
+                      </span>
+                      <div className="grid grid-cols-5 gap-1 sm:gap-1.5">
+                        {(
+                          [
+                            { key: "fajr", label: "Fajr" },
+                            { key: "dhuhr", label: "Dhuhr" },
+                            { key: "asr", label: "Asr" },
+                            { key: "maghrib", label: "Magh" },
+                            { key: "isha", label: "Isha" },
+                          ] as const
+                        ).map(({ key, label }) => {
+                          const isDone = pr[key];
+                          return (
+                            <button
+                              key={key}
+                              onClick={() =>
+                                handleTogglePrayer(act.itemId.toString(), key, !!isDone)
+                              }
+                              className={`py-1.5 text-center text-[10px] rounded border transition-all cursor-pointer ${
+                                isDone
+                                  ? "bg-purple-600/25 border-purple-500 text-purple-200 font-bold shadow-[0_0_8px_rgba(168,85,247,0.3)]"
+                                  : "bg-[#090A0F] border-[#1F2435] text-[#64748B] hover:text-[#94A3B8]"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
-                  <button
-                    key={key}
-                    onClick={() =>
-                      handleToggle(`spirituality.prayers.${key}`, isDone)
-                    }
-                    className={`py-1.5 text-center text-[10px] rounded border transition-all cursor-pointer ${
-                      isDone
-                        ? "bg-purple-600/25 border-purple-500 text-purple-200 font-bold shadow-[0_0_8px_rgba(168,85,247,0.3)]"
-                        : "bg-[#090A0F] border-[#1F2435] text-[#64748B] hover:text-[#94A3B8]"
-                    }`}
+                  <label
+                    key={act.itemId.toString()}
+                    onClick={() => handleToggleDynamic(act.itemId.toString(), act.isCompleted)}
+                    className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1 border-b border-[#181B26] last:border-0"
                   >
-                    {label}
-                  </button>
+                    <div>
+                      <div className="font-medium text-white">{act.title}</div>
+                      {act.description && (
+                        <div className="text-[10px] text-[#64748B]">{act.description}</div>
+                      )}
+                    </div>
+                    {act.isCompleted ? (
+                      <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0 ml-2" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-[#475569] shrink-0 ml-2" />
+                    )}
+                  </label>
                 );
-              })}
-            </div>
-          </div>
-
-          {/* Quran & Arabic Checkboxes */}
-          <div className="space-y-2 pt-1 border-t border-[#181B26]">
-            <label
-              onClick={() =>
-                handleToggle(
-                  "spirituality.quran",
-                  protocol.spirituality?.quran || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1"
-            >
-              <span className="flex items-center gap-2">
-                <BookOpen className="w-3.5 h-3.5 text-purple-400" />
-                <span>Quran Recitation</span>
-              </span>
-              {protocol.spirituality?.quran ? (
-                <CheckCircle2 className="w-4 h-4 text-purple-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
-
-            <label
-              onClick={() =>
-                handleToggle(
-                  "spirituality.arabic",
-                  protocol.spirituality?.arabic || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-xs font-bold text-purple-400 font-serif">
-                  ع
-                </span>
-                <span>Learning Arabic</span>
-              </span>
-              {protocol.spirituality?.arabic ? (
-                <CheckCircle2 className="w-4 h-4 text-purple-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
+              })
+            )}
           </div>
         </div>
 
@@ -246,73 +260,36 @@ export default function LivingSpheresBoard({
               </h3>
             </div>
             <span className="text-[10px] text-[#00F0FF] font-bold bg-[#00F0FF]/10 px-2 py-0.5 rounded border border-[#00F0FF]/30">
-              Strategy &amp; Study
+              {mentalActs.filter((a) => a.isCompleted).length}/{mentalActs.length} Done
             </span>
           </div>
 
-          <div className="space-y-2.5 pt-1">
-            <label
-              onClick={() =>
-                handleToggle(
-                  "mentally.dayPlanning",
-                  protocol.mentally?.dayPlanning || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1 border-b border-[#181B26]"
-            >
-              <div>
-                <div className="font-medium">Day Planning &amp; Strategy</div>
-                <div className="text-[10px] text-[#64748B]">
-                  Framed priorities before 10:30 AM
-                </div>
+          <div className="space-y-2 pt-1">
+            {mentalActs.length === 0 ? (
+              <div className="py-4 text-center text-xs text-[#64748B]">
+                No mental activities configured.
               </div>
-              {protocol.mentally?.dayPlanning ? (
-                <CheckCircle2 className="w-4 h-4 text-[#00F0FF]" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
-
-            <label
-              onClick={() =>
-                handleToggle("mentally.reading", protocol.mentally?.reading || false)
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1 border-b border-[#181B26]"
-            >
-              <div>
-                <div className="font-medium">Read 10 Pages</div>
-                <div className="text-[10px] text-[#64748B]">
-                  Book, philosophy, or technical text
-                </div>
-              </div>
-              {protocol.mentally?.reading ? (
-                <CheckCircle2 className="w-4 h-4 text-[#00F0FF]" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
-
-            <label
-              onClick={() =>
-                handleToggle(
-                  "mentally.selfLearning",
-                  protocol.mentally?.selfLearning || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1"
-            >
-              <div>
-                <div className="font-medium">Self-Learning &amp; Research</div>
-                <div className="text-[10px] text-[#64748B]">
-                  Coding practice or business growth
-                </div>
-              </div>
-              {protocol.mentally?.selfLearning ? (
-                <CheckCircle2 className="w-4 h-4 text-[#00F0FF]" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
+            ) : (
+              mentalActs.map((act) => (
+                <label
+                  key={act.itemId.toString()}
+                  onClick={() => handleToggleDynamic(act.itemId.toString(), act.isCompleted)}
+                  className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1 border-b border-[#181B26] last:border-0"
+                >
+                  <div>
+                    <div className="font-medium text-white">{act.title}</div>
+                    {act.description && (
+                      <div className="text-[10px] text-[#64748B]">{act.description}</div>
+                    )}
+                  </div>
+                  {act.isCompleted ? (
+                    <CheckCircle2 className="w-4 h-4 text-[#00F0FF] shrink-0 ml-2" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-[#475569] shrink-0 ml-2" />
+                  )}
+                </label>
+              ))
+            )}
           </div>
         </div>
 
@@ -334,96 +311,38 @@ export default function LivingSpheresBoard({
           </div>
 
           <div className="space-y-2 pt-1">
-            <label
-              onClick={() =>
-                handleToggle(
-                  "physically.morningWorkout",
-                  protocol.physically?.morningWorkout || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-0.5"
-            >
-              <span>Morning Light Workout &amp; Walk</span>
-              {protocol.physically?.morningWorkout ? (
-                <CheckCircle2 className="w-4 h-4 text-rose-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
+            {physicalActs.length === 0 ? (
+              <div className="py-4 text-center text-xs text-[#64748B]">
+                No physical activities configured.
+              </div>
+            ) : (
+              physicalActs.map((act) => {
+                const isGym = act.type === "WORKOUT_LOG" || act.title.includes("Gym");
 
-            <label
-              onClick={() =>
-                handleToggle(
-                  "physically.healthyBreakfast",
-                  protocol.physically?.healthyBreakfast || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-0.5"
-            >
-              <span>Nutritious Breakfast</span>
-              {protocol.physically?.healthyBreakfast ? (
-                <CheckCircle2 className="w-4 h-4 text-rose-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
-
-            <label
-              onClick={() =>
-                handleToggle(
-                  "physically.healthyLunch",
-                  protocol.physically?.healthyLunch || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-0.5"
-            >
-              <span>Healthy Lunch (2:00 PM)</span>
-              {protocol.physically?.healthyLunch ? (
-                <CheckCircle2 className="w-4 h-4 text-rose-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
-
-            <label
-              onClick={() =>
-                handleToggle(
-                  "physically.gymWorkout",
-                  protocol.physically?.gymWorkout || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-0.5"
-            >
-              <span className="flex items-center gap-1">
-                <span>Evening Gym (7:30-8:00 PM)</span>
-                <Flame className="w-3 h-3 text-rose-500" />
-              </span>
-              {protocol.physically?.gymWorkout ? (
-                <CheckCircle2 className="w-4 h-4 text-rose-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
-
-            <label
-              onClick={() =>
-                handleToggle(
-                  "physically.sleepTarget",
-                  protocol.physically?.sleepTarget || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-0.5"
-            >
-              <span className="flex items-center gap-1">
-                <Moon className="w-3 h-3 text-indigo-400" />
-                <span>Sleep 7-9h (In bed by 11 PM)</span>
-              </span>
-              {protocol.physically?.sleepTarget ? (
-                <CheckCircle2 className="w-4 h-4 text-rose-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
+                return (
+                  <label
+                    key={act.itemId.toString()}
+                    onClick={() => handleToggleDynamic(act.itemId.toString(), act.isCompleted)}
+                    className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1 border-b border-[#181B26] last:border-0"
+                  >
+                    <div>
+                      <div className="font-medium text-white flex items-center gap-1.5">
+                        <span>{act.title}</span>
+                        {isGym && <Flame className="w-3 h-3 text-rose-500" />}
+                      </div>
+                      {act.description && (
+                        <div className="text-[10px] text-[#64748B]">{act.description}</div>
+                      )}
+                    </div>
+                    {act.isCompleted ? (
+                      <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 ml-2" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-[#475569] shrink-0 ml-2" />
+                    )}
+                  </label>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -437,78 +356,36 @@ export default function LivingSpheresBoard({
               </h3>
             </div>
             <span className="text-[10px] text-pink-300 font-bold bg-pink-950/40 px-2 py-0.5 rounded border border-pink-800/40">
-              Presence &amp; Bond
+              {emotionalActs.filter((a) => a.isCompleted).length}/{emotionalActs.length} Done
             </span>
           </div>
 
-          <div className="space-y-2.5 pt-1">
-            <label
-              onClick={() =>
-                handleToggle(
-                  "emotionally.mentalPreparedness",
-                  protocol.emotionally?.mentalPreparedness || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1 border-b border-[#181B26]"
-            >
-              <div>
-                <div className="font-medium">Emotional Preparedness</div>
-                <div className="text-[10px] text-[#64748B]">
-                  Calm responses to daily scenarios
-                </div>
+          <div className="space-y-2 pt-1">
+            {emotionalActs.length === 0 ? (
+              <div className="py-4 text-center text-xs text-[#64748B]">
+                No emotional activities configured.
               </div>
-              {protocol.emotionally?.mentalPreparedness ? (
-                <CheckCircle2 className="w-4 h-4 text-pink-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
-
-            <label
-              onClick={() =>
-                handleToggle(
-                  "emotionally.mushfaTime",
-                  protocol.emotionally?.mushfaTime || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1 border-b border-[#181B26]"
-            >
-              <div>
-                <div className="font-medium text-pink-300">
-                  Focus &amp; Planning for Mushfa
-                </div>
-                <div className="text-[10px] text-[#64748B]">
-                  Dedicated loving focus &amp; future plans
-                </div>
-              </div>
-              {protocol.emotionally?.mushfaTime ? (
-                <CheckCircle2 className="w-4 h-4 text-pink-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
-
-            <label
-              onClick={() =>
-                handleToggle(
-                  "emotionally.familyTime",
-                  protocol.emotionally?.familyTime || false
-                )
-              }
-              className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1"
-            >
-              <div>
-                <div className="font-medium">Family &amp; Loved Ones</div>
-                <div className="text-[10px] text-[#64748B]">
-                  Quality conversation &amp; bonds
-                </div>
-              </div>
-              {protocol.emotionally?.familyTime ? (
-                <CheckCircle2 className="w-4 h-4 text-pink-400" />
-              ) : (
-                <Circle className="w-4 h-4 text-[#475569]" />
-              )}
-            </label>
+            ) : (
+              emotionalActs.map((act) => (
+                <label
+                  key={act.itemId.toString()}
+                  onClick={() => handleToggleDynamic(act.itemId.toString(), act.isCompleted)}
+                  className="flex items-center justify-between text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none py-1 border-b border-[#181B26] last:border-0"
+                >
+                  <div>
+                    <div className="font-medium text-white">{act.title}</div>
+                    {act.description && (
+                      <div className="text-[10px] text-[#64748B]">{act.description}</div>
+                    )}
+                  </div>
+                  {act.isCompleted ? (
+                    <CheckCircle2 className="w-4 h-4 text-pink-400 shrink-0 ml-2" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-[#475569] shrink-0 ml-2" />
+                  )}
+                </label>
+              ))
+            )}
           </div>
         </div>
 
@@ -533,39 +410,51 @@ export default function LivingSpheresBoard({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 items-center">
+            {/* Total Spending Aggregator */}
             <div className="bg-[#050608] p-3 rounded-lg border border-[#1F2435] space-y-1">
               <span className="text-[10px] text-[#94A3B8] uppercase block">
                 Today&apos;s Total Spending
               </span>
               <div className="text-2xl font-bold text-emerald-400">
-                ₹{protocol.financially?.totalSpentToday?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "0.00"}
+                ₹
+                {protocol.financially?.totalSpentToday?.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }) || "0.00"}
               </div>
               <p className="text-[10px] text-[#64748B]">
                 Tracked across Food, Commute, Outing, Misc
               </p>
             </div>
 
-            <label
-              onClick={() =>
-                handleToggle(
-                  "financially.auditCompleted",
-                  protocol.financially?.auditCompleted || false
-                )
-              }
-              className="flex items-center justify-between p-3 rounded-lg bg-[#050608] border border-[#1F2435] text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none"
-            >
-              <div>
-                <div className="font-bold">End-of-Day Audit Completed</div>
-                <div className="text-[10px] text-[#64748B]">
-                  Logged and accounted for every rupee
+            {/* Financial Activities Checkboxes */}
+            <div className="space-y-2">
+              {financialActs.length === 0 ? (
+                <div className="p-3 text-center text-xs text-[#64748B]">
+                  No financial activities configured.
                 </div>
-              </div>
-              {protocol.financially?.auditCompleted ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               ) : (
-                <Circle className="w-5 h-5 text-[#475569]" />
+                financialActs.map((act) => (
+                  <label
+                    key={act.itemId.toString()}
+                    onClick={() => handleToggleDynamic(act.itemId.toString(), act.isCompleted)}
+                    className="flex items-center justify-between p-3 rounded-lg bg-[#050608] border border-[#1F2435] text-xs text-[#CBD5E1] hover:text-white cursor-pointer select-none"
+                  >
+                    <div>
+                      <div className="font-bold text-white">{act.title}</div>
+                      <div className="text-[10px] text-[#64748B]">
+                        {act.description || "Logged and accounted for every rupee"}
+                      </div>
+                    </div>
+                    {act.isCompleted ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 ml-2" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-[#475569] shrink-0 ml-2" />
+                    )}
+                  </label>
+                ))
               )}
-            </label>
+            </div>
           </div>
         </div>
       </div>

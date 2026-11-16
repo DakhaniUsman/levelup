@@ -21,3 +21,6 @@ export const CreateQuestSchema = z.object({
 
 export type CreateQuestInput = z.infer<typeof CreateQuestSchema>;
 
+export const UpdateQuestSchema = CreateQuestSchema.partial();
+export type UpdateQuestInput = z.infer<typeof UpdateQuestSchema>;
+

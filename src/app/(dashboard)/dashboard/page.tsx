@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { PopulatedOccurrence } from "@/features/quests/services/quest.service";
 import { ITask } from "@/models/Task";
+import { IQuest } from "@/models/Quest";
+import { IWorkout } from "@/models/Workout";
 import { IDailyProtocol } from "@/models/DailyProtocol";
 import QuestCard from "@/features/quests/components/QuestCard";
 import TaskModal from "@/features/tasks/components/TaskModal";
@@ -27,6 +29,8 @@ import LivingSpheresBoard from "@/features/protocol/components/LivingSpheresBoar
 import SystemJudgementModal from "@/features/protocol/components/SystemJudgementModal";
 import ExpenseModal from "@/features/expenses/components/ExpenseModal";
 import WorkoutLoggerModal from "@/features/workouts/components/WorkoutLoggerModal";
+import WorkoutHistoryModal from "@/features/workouts/components/WorkoutHistoryModal";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 interface DashboardData {
   profile: {
@@ -44,6 +48,7 @@ interface DashboardData {
       name: string;
       title: string;
       colorHex: string;
+      code?: string;
     };
   };
   dailyPerformance: {
@@ -75,9 +80,14 @@ const DEFAULT_CATEGORIES = [
 export default function DashboardPage() {
   const queryClient = useQueryClient();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<ITask | null>(null);
   const [isQuestModalOpen, setIsQuestModalOpen] = useState(false);
+  const [questToEdit, setQuestToEdit] = useState<IQuest | null>(null);
+  const [questToDelete, setQuestToDelete] = useState<IQuest | null>(null);
   const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false);
   const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
+  const [isWorkoutHistoryOpen, setIsWorkoutHistoryOpen] = useState(false);
+  const [workoutToEdit, setWorkoutToEdit] = useState<IWorkout | null>(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isJudgementModalOpen, setIsJudgementModalOpen] = useState(false);
 
@@ -129,6 +139,25 @@ export default function DashboardPage() {
     },
   });
 
+  const deleteQuestMutation = useMutation({
+    mutationFn: async (questId: string) => {
+      const res = await fetch(`/api/quests/${questId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to delete quest");
+      }
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["progression-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["today-quests"] });
+      setQuestToDelete(null);
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="py-24 flex flex-col items-center justify-center text-[#64748B] font-mono text-xs gap-3">
@@ -160,14 +189,22 @@ export default function DashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-4">
             <div
-              className="w-16 h-16 rounded-2xl border flex items-center justify-center shadow-lg font-mono font-bold text-2xl shrink-0 transition-all"
+              className="w-16 h-16 rounded-2xl border flex items-center justify-center shrink-0 transition-all bg-[#131620] relative group"
               style={{
-                borderColor: `${rank?.colorHex}60`,
-                backgroundColor: `${rank?.colorHex}15`,
-                color: rank?.colorHex,
+                borderColor: rank?.colorHex && rank.name !== "E-Rank" ? `${rank.colorHex}70` : "rgba(0, 240, 255, 0.5)",
+                backgroundColor: rank?.colorHex && rank.name !== "E-Rank" ? `${rank.colorHex}18` : "rgba(0, 240, 255, 0.1)",
+                boxShadow: rank?.colorHex && rank.name !== "E-Rank"
+                  ? `0 0 20px ${rank.colorHex}35`
+                  : "0 0 20px rgba(0, 240, 255, 0.25)",
               }}
             >
-              <Shield className="w-8 h-8" />
+              <Shield
+                className="w-8 h-8 transition-transform duration-300 group-hover:scale-110"
+                style={{
+                  color: rank?.colorHex && rank.name !== "E-Rank" ? rank.colorHex : "#00F0FF",
+                  filter: `drop-shadow(0 0 10px ${rank?.colorHex && rank.name !== "E-Rank" ? rank.colorHex : "#00F0FF"})`,
+                }}
+              />
             </div>
 
             <div>
@@ -208,7 +245,7 @@ export default function DashboardPage() {
               <span>Quest</span>
             </button>
             <button
-              onClick={() => setIsWorkoutModalOpen(true)}
+              onClick={() => setIsWorkoutHistoryOpen(true)}
               className="px-3 py-1.5 rounded-lg bg-rose-950/30 border border-rose-900/60 hover:border-rose-500 text-xs font-mono text-rose-300 transition-all flex items-center gap-1 cursor-pointer"
             >
               <Dumbbell className="w-3.5 h-3.5 text-rose-400" />
@@ -397,6 +434,13 @@ export default function DashboardPage() {
                   key={occ._id.toString()}
                   occurrence={occ}
                   onComplete={(id) => completeQuestMutation.mutate(id)}
+                  onEdit={(quest) => {
+                    setQuestToEdit(quest);
+                    setIsQuestModalOpen(true);
+                  }}
+                  onDelete={(quest) => {
+                    setQuestToDelete(quest);
+                  }}
                 />
               ))}
             </div>
@@ -445,12 +489,24 @@ export default function DashboardPage() {
                     </h4>
                   </div>
 
-                  <button
-                    onClick={() => completeTaskMutation.mutate(t._id.toString())}
-                    className="px-3 py-1.5 rounded-lg bg-[#131620] border border-[#1F2435] hover:border-emerald-500 hover:text-emerald-400 text-xs font-mono transition-all text-[#94A3B8] cursor-pointer"
-                  >
-                    Done (+{t.xpReward} XP)
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setTaskToEdit(t);
+                        setIsTaskModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-lg bg-[#131620] border border-[#1F2435] hover:border-[#0088FF]/50 text-[#64748B] hover:text-[#0088FF] transition-all cursor-pointer"
+                      title="Edit Directive"
+                    >
+                      <Plus className="w-3.5 h-3.5 rotate-45" />
+                    </button>
+                    <button
+                      onClick={() => completeTaskMutation.mutate(t._id.toString())}
+                      className="px-3 py-1.5 rounded-lg bg-[#131620] border border-[#1F2435] hover:border-emerald-500 hover:text-emerald-400 text-xs font-mono transition-all text-[#94A3B8] cursor-pointer"
+                    >
+                      Done (+{t.xpReward} XP)
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -461,17 +517,41 @@ export default function DashboardPage() {
       {/* Modals */}
       <TaskModal
         isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
+        taskToEdit={taskToEdit}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          setTaskToEdit(null);
+        }}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+          queryClient.invalidateQueries({ queryKey: ["tasks"] });
         }}
       />
       <CreateQuestModal
         isOpen={isQuestModalOpen}
-        onClose={() => setIsQuestModalOpen(false)}
+        questToEdit={questToEdit}
+        onClose={() => {
+          setIsQuestModalOpen(false);
+          setQuestToEdit(null);
+        }}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+          queryClient.invalidateQueries({ queryKey: ["today-quests"] });
         }}
+      />
+      <ConfirmDeleteModal
+        isOpen={!!questToDelete}
+        onClose={() => setQuestToDelete(null)}
+        onConfirm={() => {
+          if (questToDelete) {
+            deleteQuestMutation.mutate(questToDelete._id.toString());
+          }
+        }}
+        title="DELETE QUEST TRIAL"
+        itemName={questToDelete?.title || "Daily Quest"}
+        description="Are you sure you want to deactivate and remove this recurring trial?"
+        warningText="Past completed trials and earned XP remain permanently recorded in your ledger. Future pending occurrences will be cleared."
+        isPending={deleteQuestMutation.isPending}
       />
       <BookmarkModal
         isOpen={isBookmarkModalOpen}
@@ -482,7 +562,23 @@ export default function DashboardPage() {
       />
       <WorkoutLoggerModal
         isOpen={isWorkoutModalOpen}
-        onClose={() => setIsWorkoutModalOpen(false)}
+        workoutToEdit={workoutToEdit}
+        onClose={() => {
+          setIsWorkoutModalOpen(false);
+          setWorkoutToEdit(null);
+        }}
+      />
+      <WorkoutHistoryModal
+        isOpen={isWorkoutHistoryOpen}
+        onClose={() => setIsWorkoutHistoryOpen(false)}
+        onEditWorkout={(w) => {
+          setWorkoutToEdit(w);
+          setIsWorkoutModalOpen(true);
+        }}
+        onLogNewWorkout={() => {
+          setWorkoutToEdit(null);
+          setIsWorkoutModalOpen(true);
+        }}
       />
       <ExpenseModal
         isOpen={isExpenseModalOpen}

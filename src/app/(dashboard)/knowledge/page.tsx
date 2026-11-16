@@ -6,6 +6,7 @@ import { BookOpen, Plus, Search, Star, Loader2 } from "lucide-react";
 import { IBookmark, BookmarkCategory } from "@/models/Bookmark";
 import BookmarkCard from "@/features/knowledge/components/BookmarkCard";
 import BookmarkModal from "@/features/knowledge/components/BookmarkModal";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES: (BookmarkCategory | "ALL")[] = [
@@ -23,6 +24,8 @@ const CATEGORIES: (BookmarkCategory | "ALL")[] = [
 export default function KnowledgePage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [bookmarkToEdit, setBookmarkToEdit] = useState<IBookmark | null>(null);
+  const [bookmarkToDelete, setBookmarkToDelete] = useState<IBookmark | null>(null);
   const [activeCategory, setActiveCategory] = useState<BookmarkCategory | "ALL">(
     "ALL"
   );
@@ -66,10 +69,15 @@ export default function KnowledgePage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/knowledge/${id}`, { method: "DELETE" });
-      return res.json();
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to delete bookmark");
+      }
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+      setBookmarkToDelete(null);
     },
   });
 
@@ -88,7 +96,10 @@ export default function KnowledgePage() {
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setBookmarkToEdit(null);
+            setIsModalOpen(true);
+          }}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#00F0FF] text-[#090A0F] font-mono font-bold text-xs hover:bg-[#00F0FF]/90 transition-all shadow-[0_0_15px_rgba(0,240,255,0.25)] cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -170,7 +181,13 @@ export default function KnowledgePage() {
               onToggleFavorite={(id, isFavorite) =>
                 toggleFavoriteMutation.mutate({ id, isFavorite })
               }
-              onDelete={(id) => deleteMutation.mutate(id)}
+              onEdit={(b) => {
+                setBookmarkToEdit(b);
+                setIsModalOpen(true);
+              }}
+              onDelete={(b) => {
+                setBookmarkToDelete(b);
+              }}
             />
           ))}
         </div>
@@ -179,10 +196,30 @@ export default function KnowledgePage() {
       {/* Modal */}
       <BookmarkModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        bookmarkToEdit={bookmarkToEdit}
+        onClose={() => {
+          setIsModalOpen(false);
+          setBookmarkToEdit(null);
+        }}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["knowledge"] });
         }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!bookmarkToDelete}
+        onClose={() => setBookmarkToDelete(null)}
+        onConfirm={() => {
+          if (bookmarkToDelete) {
+            deleteMutation.mutate(bookmarkToDelete._id.toString());
+          }
+        }}
+        title="DELETE KNOWLEDGE ARCHIVE"
+        itemName={bookmarkToDelete?.title || "Resource"}
+        description="Are you sure you want to permanently remove this codex entry from your knowledge archive?"
+        warningText="The link and personal notes will be removed from your codex index."
+        isPending={deleteMutation.isPending}
       />
     </div>
   );

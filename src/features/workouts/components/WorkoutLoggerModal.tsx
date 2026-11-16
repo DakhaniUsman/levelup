@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   X,
@@ -12,12 +12,14 @@ import {
   Loader2,
   Clock,
   Sparkles,
+  Edit3,
 } from "lucide-react";
-import { WorkoutSplit } from "@/models/Workout";
+import { IWorkout, WorkoutSplit } from "@/models/Workout";
 
 interface WorkoutLoggerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  workoutToEdit?: IWorkout | null;
 }
 
 interface SetEntry {
@@ -36,6 +38,7 @@ interface ExerciseEntry {
 export default function WorkoutLoggerModal({
   isOpen,
   onClose,
+  workoutToEdit,
 }: WorkoutLoggerModalProps) {
   const queryClient = useQueryClient();
   const [split, setSplit] = useState<WorkoutSplit>("PUSH");
@@ -56,6 +59,47 @@ export default function WorkoutLoggerModal({
     },
   ]);
 
+  useEffect(() => {
+    if (workoutToEdit) {
+      setSplit(workoutToEdit.split || "PUSH");
+      setTitle(workoutToEdit.title || "");
+      setDurationMinutes(workoutToEdit.durationMinutes || 60);
+      setIntensityRating(workoutToEdit.intensityRating || 8);
+      setNotes(workoutToEdit.notes || "");
+      if (workoutToEdit.exercises && workoutToEdit.exercises.length > 0) {
+        setExercises(
+          workoutToEdit.exercises.map((e) => ({
+            exerciseName: e.exerciseName,
+            sets: e.sets.map((s) => ({
+              setNumber: s.setNumber,
+              reps: s.reps,
+              weightKg: s.weightKg,
+              isPersonalRecord: Boolean(s.isPersonalRecord),
+            })),
+            notes: e.notes || "",
+          }))
+        );
+      }
+    } else {
+      setSplit("PUSH");
+      setTitle("Push Day: Progressive Overload");
+      setDurationMinutes(60);
+      setIntensityRating(8);
+      setNotes("");
+      setExercises([
+        {
+          exerciseName: "Barbell Bench Press",
+          sets: [
+            { setNumber: 1, reps: 10, weightKg: 60, isPersonalRecord: false },
+            { setNumber: 2, reps: 8, weightKg: 70, isPersonalRecord: false },
+            { setNumber: 3, reps: 6, weightKg: 75, isPersonalRecord: true },
+          ],
+          notes: "Focused on paused eccentric reps",
+        },
+      ]);
+    }
+  }, [workoutToEdit, isOpen]);
+
   const workoutMutation = useMutation({
     mutationFn: async (payload: {
       split: WorkoutSplit;
@@ -65,16 +109,22 @@ export default function WorkoutLoggerModal({
       exercises: ExerciseEntry[];
       notes?: string;
     }) => {
-      const res = await fetch("/api/workouts", {
-        method: "POST",
+      const url = workoutToEdit
+        ? `/api/workouts/${workoutToEdit._id}`
+        : "/api/workouts";
+      const method = workoutToEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message || "Failed to log workout");
+      if (!res.ok) throw new Error(json.message || `Failed to ${workoutToEdit ? "update" : "log"} workout`);
       return json;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workouts"] });
       queryClient.invalidateQueries({ queryKey: ["daily-protocol"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["progression-stats"] });
@@ -155,13 +205,17 @@ export default function WorkoutLoggerModal({
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2 flex-wrap">
-                <span>GYM SESSION</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono">
-                  +75 XP
-                </span>
+                <span>{workoutToEdit ? "RECONFIGURE WORKOUT" : "GYM SESSION"}</span>
+                {!workoutToEdit && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono">
+                    +75 XP
+                  </span>
+                )}
               </h3>
               <p className="text-[10px] sm:text-[11px] text-[#94A3B8]">
-                Target 7:30 - 8:00 PM evening workout with progressive overload
+                {workoutToEdit
+                  ? "Update exercises, weight targets, and reps"
+                  : "Target 7:30 - 8:00 PM evening workout with progressive overload"}
               </p>
             </div>
           </div>
@@ -410,12 +464,12 @@ export default function WorkoutLoggerModal({
               {workoutMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Logging Session...</span>
+                  <span>{workoutToEdit ? "Updating Session..." : "Logging Session..."}</span>
                 </>
               ) : (
                 <>
-                  <Dumbbell className="w-4 h-4" />
-                  <span>Record Workout (+75 XP)</span>
+                  {workoutToEdit ? <Edit3 className="w-4 h-4" /> : <Dumbbell className="w-4 h-4" />}
+                  <span>{workoutToEdit ? "Save Changes" : "Record Workout (+75 XP)"}</span>
                 </>
               )}
             </button>
