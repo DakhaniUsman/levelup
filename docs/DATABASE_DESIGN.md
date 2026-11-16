@@ -105,4 +105,33 @@
 - Legacy compatibility fields: `spirituality`, `mentally`, `physically`, `emotionally`, `financially`
 - Compound Unique Index: `{ userId: 1, targetDate: 1 }`
 
+### 11. DeviceSubscription (`models/DeviceSubscription.ts`)
+- `userId`: ObjectId (ref: User, index)
+- `endpoint`: String (unique, index)
+- `keys`: `{ p256dh: String, auth: String }`
+- `userAgent`: String
+- `deviceLabel`: String (e.g. "Android Device", "iOS Device (PWA)")
+- `isActive`: Boolean (default: true, index)
+- Timestamps: `createdAt`, `updatedAt`
+- Compound Index: `{ userId: 1, isActive: 1 }`
+
+### 12. NotificationPreference (`models/NotificationPreference.ts`)
+- `userId`: ObjectId (ref: User, unique index)
+- `enabled`: Boolean (global master switch, default: true)
+- `categories`: `{ protocol: Boolean, habits: Boolean, quests: Boolean, progression: Boolean, workouts: Boolean, expenses: Boolean, dailyReport: Boolean }`
+- `reminderTimes`: `{ morning: String, afternoon: String, evening: String, night: String, dailyReport: String }`
+- `quietHours`: `{ enabled: Boolean, start: String, end: String }`
+- `maxRemindersPerDay`: Number (min: 1, max: 20, default: 6)
+- Timestamps: `createdAt`, `updatedAt`
+
+### 13. NotificationDispatchLog (`models/NotificationDispatchLog.ts`)
+- `userId`: ObjectId (ref: User, index)
+- `dedupeKey`: String (unique compound event key, index)
+- `category`: String
+- `title`: String
+- `channel`: Enum `['PUSH', 'IN_APP', 'BOTH']`
+- `dispatchedAt`: Date (TTL index expiring documents after 7 days)
+- Compound Unique Index: `{ userId: 1, dedupeKey: 1 }`
+
+
 

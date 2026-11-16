@@ -12,6 +12,7 @@
 | **Phase 1** | Core Foundation (Auth, HUD, Tasks, Quests, Knowledge, XP Engine) | ✅ **COMPLETED** | Nov 13, 2026 |
 | **Phase 2** | Personal Progression (Habits, Streaks, Achievements, Notifications) | ✅ **COMPLETED** | Nov 13, 2026 |
 | **Phase 3** | Fitness Domain & 5-Sphere Living Protocol (Solo Leveling Penalty, Judgement, Workouts, Expenses) | ✅ **COMPLETED** | Nov 13, 2026 |
+| **System Alerts** | Web Push Notifications, Daily Reminders & Hunter Accountability Engine | ✅ **COMPLETED** | Nov 16, 2026 |
 | **Phase 4** | Advanced Analytics & Battle Records (Recharts, Reports) | ⏳ **PENDING** | — |
 | **Phase 5** | Yui AI Companion (Accountability Assistant) | ⏳ **PENDING** | — |
 | **Phase 6** | Automation & System Polish | ⏳ **PENDING** | — |
@@ -168,7 +169,21 @@ The following files represent the verified Phase 3 Fitness Domain, 5-Sphere Livi
 - Integrated `swords.jpg` brand icon into the sidebar, mobile header, login screen, register screen, and hunter profile avatar.
 - Documented deployment and hosting guide for global 24/7 cloud access.
 
-### [v3.1.0] — 2026-11-13
+### [v3.3.0] — 2026-11-16
+- **System Alerts & Web Push Notifications [COMPLETED & SEALED]**:
+  - Implemented W3C Web Push with VAPID authentication and server-side encryption via `web-push`.
+  - Service Worker (`public/sw.js`) and PWA Web App Manifest (`public/manifest.json`) for Android & iOS Home Screen lock-screen notifications.
+  - Added Mongoose models: `DeviceSubscription`, `NotificationPreference`, `NotificationDispatchLog` (with 7-day TTL).
+  - Developed `PushService` for multi-device push distribution and automated 410/404 dead subscription pruning.
+  - Developed `AccountabilityService` (Timezone-aware reminder engine, Quiet Hours guard, completion-aware suppression, and deduplication).
+  - Wired event-triggered push alerts into `XPService.awardXP` (Level Up, Rank Advancement) and `AchievementService` (Trophy unlocks).
+  - Created dedicated settings page at `/settings/notifications` with device linking, instant test push, category toggles, schedule inputs, and quiet hours.
+  - Created scheduled cron endpoint `/api/cron/reminders` with `CRON_SECRET` authorization.
+  - Enhanced Hunter HUD avatar box with electric cyan neon glow and dynamic Hunter Rank aura scaling.
+
+### [v3.2.0] — 2026-11-16
+- Completed Global CRUD Management & Cross-Module Data Synchronization.
+
 - Converted all monetary units and ledgers from USD ($) to Indian Rupee (₹) with Indian currency formatting.
 - Integrated full mobile responsive navigation suite:
   - Mobile slide-over drawer sidebar with backdrop blur and auto-close.

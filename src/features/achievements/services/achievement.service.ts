@@ -7,6 +7,7 @@ import Habit from "@/models/Habit";
 import Bookmark from "@/models/Bookmark";
 import { XPService } from "@/features/progression/services/xp.service";
 import { NotificationService } from "@/features/notifications/services/notification.service";
+import { PushService } from "@/features/notifications/services/push.service";
 
 const SEED_ACHIEVEMENTS = [
   {
@@ -214,13 +215,20 @@ export class AchievementService {
             description: `Achievement Unlocked: ${a.name} (+${a.xpReward} XP)`,
           });
 
-          // Send notification
+          // Send notification & Web Push
           await NotificationService.createNotification(userObjId, {
             title: `🏆 Achievement Unlocked: ${a.name}`,
             message: `${a.description} (+${a.xpReward} XP awarded)`,
             type: "ACHIEVEMENT",
             link: "/progression",
           });
+
+          await PushService.sendPushToUser(userObjId, {
+            title: `🏆 ACHIEVEMENT UNLOCKED: ${a.name}`,
+            body: `${a.description} (+${a.xpReward} XP awarded)`,
+            url: "/progression",
+            tag: `achievement-${a._id.toString()}`,
+          }).catch((err) => console.error("Achievement push error:", err.message));
 
           newlyUnlocked.push(a.name);
         }

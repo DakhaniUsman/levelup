@@ -263,6 +263,18 @@ export default function HunterHeader() {
                   })
                 )}
               </div>
+
+              {/* Quick Settings Shortcut */}
+              <div className="pt-2 mt-2 border-t border-[#1F2435] flex items-center justify-between text-[10px]">
+                <span className="text-[#64748B]">Push Telemetry Engine</span>
+                <Link
+                  href="/settings/notifications"
+                  onClick={() => setIsOpen(false)}
+                  className="text-[#00F0FF] hover:underline flex items-center gap-1 font-bold"
+                >
+                  <span>Configure Alerts &rarr;</span>
+                </Link>
+              </div>
             </div>
           )}
         </div>

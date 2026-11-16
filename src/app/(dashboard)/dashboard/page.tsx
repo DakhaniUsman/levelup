@@ -48,6 +48,7 @@ interface DashboardData {
       name: string;
       title: string;
       colorHex: string;
+      code?: string;
     };
   };
   dailyPerformance: {
@@ -188,14 +189,22 @@ export default function DashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-4">
             <div
-              className="w-16 h-16 rounded-2xl border flex items-center justify-center shadow-lg font-mono font-bold text-2xl shrink-0 transition-all bg-[#131620]"
+              className="w-16 h-16 rounded-2xl border flex items-center justify-center shrink-0 transition-all bg-[#131620] relative group"
               style={{
-                borderColor: rank?.colorHex ? `${rank.colorHex}60` : "rgba(0, 240, 255, 0.4)",
-                backgroundColor: rank?.colorHex ? `${rank.colorHex}18` : "rgba(0, 240, 255, 0.08)",
-                color: rank?.colorHex || "#00F0FF",
+                borderColor: rank?.colorHex && rank.name !== "E-Rank" ? `${rank.colorHex}70` : "rgba(0, 240, 255, 0.5)",
+                backgroundColor: rank?.colorHex && rank.name !== "E-Rank" ? `${rank.colorHex}18` : "rgba(0, 240, 255, 0.1)",
+                boxShadow: rank?.colorHex && rank.name !== "E-Rank"
+                  ? `0 0 20px ${rank.colorHex}35`
+                  : "0 0 20px rgba(0, 240, 255, 0.25)",
               }}
             >
-              <Shield className="w-8 h-8 drop-shadow-[0_0_10px_currentColor]" />
+              <Shield
+                className="w-8 h-8 transition-transform duration-300 group-hover:scale-110"
+                style={{
+                  color: rank?.colorHex && rank.name !== "E-Rank" ? rank.colorHex : "#00F0FF",
+                  filter: `drop-shadow(0 0 10px ${rank?.colorHex && rank.name !== "E-Rank" ? rank.colorHex : "#00F0FF"})`,
+                }}
+              />
             </div>
 
             <div>
