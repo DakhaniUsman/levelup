@@ -182,6 +182,17 @@ The following files represent the verified Phase 3 Fitness Domain, 5-Sphere Livi
   - Created scheduled cron endpoint `/api/cron/reminders` with `CRON_SECRET` authorization.
   - Enhanced Hunter HUD avatar box with electric cyan neon glow and dynamic Hunter Rank aura scaling.
 
+### [v3.3.1] — 2026-11-19
+- Enhanced Financial Intelligence with Expense Categories Expansion:
+  - Added Rent (`RENT`), Electricity Bill (EB) (`ELECTRICITY_BILL`), and Home Support (`HOME_SUPPORT`).
+  - Added centralized metadata (`src/features/finance/constants/categories.ts`) with formatters and category icons (`formatCategoryLabel`, `getCategoryIcon`).
+  - Implemented default ₹500 planned budget allocation for Electricity Bill (EB) on all newly created monthly budgets, with non-destructive backfill for existing monthly budgets.
+  - Actual EB expenses reduce remaining allocation; overspending warning activates if actual spending exceeds ₹500 without generating phantom expenses.
+  - Integrated readable category labels and icons across Category-Wise Budget Adherence, Plan Budget Modal, Category Distribution, Monthly Transactions Ledger, and Daily Financial Audit modal.
+  - Added category filter selector in Monthly Transactions Ledger.
+  - Preserved backward compatibility for all existing historical expenses and dynamic custom categories.
+  - Verified 0 TypeScript errors and full production build passing cleanly.
+
 ### [v3.3.0] — 2026-11-19
 - Completed Fitness & Transformation and Financial Intelligence Feature Expansion.
 - Global Data Synchronization:

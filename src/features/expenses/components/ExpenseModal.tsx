@@ -7,30 +7,21 @@ import {
   Plus,
   Trash2,
   Receipt,
-  Coffee,
-  Navigation,
-  Film,
-  Users,
-  CircleDot,
   Loader2,
   Edit3,
 } from "lucide-react";
 import { ExpenseCategory, IExpense } from "@/models/Expense";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
+import {
+  STANDARD_CATEGORIES,
+  formatCategoryLabel,
+} from "@/features/finance/constants/categories";
 
 interface ExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
-
-const CATEGORIES: { label: string; value: ExpenseCategory; icon: typeof Coffee }[] = [
-  { label: "Food & Meals", value: "FOOD", icon: Coffee },
-  { label: "Travelling / Commute", value: "TRAVELLING", icon: Navigation },
-  { label: "Entertainment", value: "ENTERTAINMENT", icon: Film },
-  { label: "Outing & Social", value: "OUTING", icon: Users },
-  { label: "Miscellaneous", value: "MISCELLANEOUS", icon: CircleDot },
-];
 
 export default function ExpenseModal({ isOpen, onClose, onSuccess }: ExpenseModalProps) {
   const queryClient = useQueryClient();
@@ -53,6 +44,41 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }: ExpenseModa
     },
     enabled: isOpen,
   });
+
+  // Merge standard categories with any active custom categories from today's expenses or editing item
+  const allCategoryOptions = (() => {
+    const list: { label: string; value: string }[] = STANDARD_CATEGORIES.map((c) => ({
+      label: c.label,
+      value: c.value,
+    }));
+    const seenValues = new Set(list.map((c) => c.value.toUpperCase()));
+
+    if (data?.expenses) {
+      for (const exp of data.expenses) {
+        const val = (exp.category || "").trim();
+        if (val) {
+          const upper = val.toUpperCase();
+          if (!seenValues.has(upper)) {
+            seenValues.add(upper);
+            list.push({ label: formatCategoryLabel(val), value: val });
+          }
+        }
+      }
+    }
+
+    if (editingExpense) {
+      const val = (editingExpense.category || "").trim();
+      if (val) {
+        const upper = val.toUpperCase();
+        if (!seenValues.has(upper)) {
+          seenValues.add(upper);
+          list.push({ label: formatCategoryLabel(val), value: val });
+        }
+      }
+    }
+
+    return list;
+  })();
 
   const createExpenseMutation = useMutation({
     mutationFn: async (payload: { amount: number; category: ExpenseCategory; description: string }) => {
@@ -235,7 +261,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }: ExpenseModa
                 onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
                 className="w-full px-3 py-2 rounded-lg bg-[#050608] border border-[#1F2435] text-xs text-white focus:outline-none focus:border-[#00F0FF]"
               >
-                {CATEGORIES.map((cat) => (
+                {allCategoryOptions.map((cat) => (
                   <option key={cat.value} value={cat.value}>
                     {cat.label}
                   </option>
@@ -309,7 +335,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }: ExpenseModa
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-[#131620] border border-[#1F2435] text-emerald-400">
-                      {item.category}
+                      {formatCategoryLabel(item.category)}
                     </span>
                     <span className="text-white font-medium truncate">{item.description}</span>
                   </div>

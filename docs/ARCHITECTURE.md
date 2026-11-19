@@ -141,3 +141,9 @@ POST / PATCH /api/expenses
 - **Overspending Warning System**: Visual and programmatic status triggers (`NORMAL`, `WARNING` at $>80\%$, `CRITICAL` at $>100\%$).
 - **Daily Spending & Category Analytics**: SVG HUD bar chart for daily expense velocity and category percentage breakdown.
 - **Executive Monthly Report**: Automatically computes largest expense categories, top spending day, daily averages, and actionable behavioral recommendations.
+
+### 7.3 Expense Category Expansion (Rent, EB, Home Support)
+- **Centralized Metadata (`categories.ts`)**: Single source of truth for display labels (`formatCategoryLabel`), icons (`getCategoryIcon`), and default allocations.
+- **Electricity Bill (EB)**: Default planned budget allocation initialized to ₹500 for new monthly budgets. Non-destructively added to existing budgets if not present. Actual payments recorded manually via Log Expense, reducing remaining EB budget and triggering overspending warnings when exceeding ₹500.
+- **Rent & Home Support**: Configurable monthly budget categories. Home support represents money sent home/family assistance and is tracked as an actual expense in all financial analytics.
+- **Dynamic Category Preservation**: Fully backward compatible with legacy and custom hunter categories. Custom categories present in transactions dynamically appear in modals and filters without schema friction.
