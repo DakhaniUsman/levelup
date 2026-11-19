@@ -59,7 +59,7 @@ export default function FinancialIntelligencePage() {
     { categoryName: "FOOD", allocatedAmount: 7000 },
     { categoryName: "RENT", allocatedAmount: 5000 },
     { categoryName: "ELECTRICITY_BILL", allocatedAmount: 500 },
-    { categoryName: "HOME_SUPPORT", allocatedAmount: 5000 },
+    { categoryName: "HOME_SUPPORT", allocatedAmount: 10000 },
     { categoryName: "TRAVELLING", allocatedAmount: 2000 },
     { categoryName: "PERSONAL", allocatedAmount: 2000 },
     { categoryName: "MISCELLANEOUS", allocatedAmount: 3000 },
