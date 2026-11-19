@@ -9,7 +9,7 @@ import { z } from "zod";
 
 const CreateExpenseSchema = z.object({
   amount: z.number().positive("Amount must be greater than 0"),
-  category: z.enum(["FOOD", "TRAVELLING", "ENTERTAINMENT", "OUTING", "MISCELLANEOUS"]),
+  category: z.string().min(1, "Category is required").max(50),
   description: z.string().min(1, "Description is required").max(250),
   targetDate: z.string().optional(),
 });

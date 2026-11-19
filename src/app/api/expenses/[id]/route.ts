@@ -9,9 +9,7 @@ import { z } from "zod";
 
 const UpdateExpenseSchema = z.object({
   amount: z.number().min(0).optional(),
-  category: z
-    .enum(["FOOD", "TRAVELLING", "ENTERTAINMENT", "OUTING", "MISCELLANEOUS"])
-    .optional(),
+  category: z.string().min(1).max(50).optional(),
   description: z.string().min(1).max(250).optional(),
   targetDate: z.string().optional(),
 });

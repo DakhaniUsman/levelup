@@ -2,10 +2,13 @@ import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 export type ExpenseCategory =
   | "FOOD"
+  | "RENT"
   | "TRAVELLING"
   | "ENTERTAINMENT"
+  | "PERSONAL"
   | "OUTING"
-  | "MISCELLANEOUS";
+  | "MISCELLANEOUS"
+  | string;
 
 export interface IExpense extends Document {
   userId: Types.ObjectId;
@@ -36,8 +39,9 @@ const ExpenseSchema = new Schema<IExpense>(
     },
     category: {
       type: String,
-      enum: ["FOOD", "TRAVELLING", "ENTERTAINMENT", "OUTING", "MISCELLANEOUS"],
+      required: true,
       default: "MISCELLANEOUS",
+      trim: true,
       index: true,
     },
     description: {

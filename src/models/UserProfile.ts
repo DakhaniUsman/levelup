@@ -1,5 +1,11 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
+export interface IFitnessProfile {
+  startingWeightKg: number;
+  targetWeightKg: number;
+  weeklyPplGoal: number; // target sessions per muscle group weekly (default: 2)
+}
+
 export interface IUserProfile extends Document {
   userId: Types.ObjectId;
   displayName: string;
@@ -10,6 +16,7 @@ export interface IUserProfile extends Document {
     compactMode: boolean;
     soundEffects: boolean;
   };
+  fitnessProfile: IFitnessProfile;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +53,11 @@ const UserProfileSchema = new Schema<IUserProfile>(
     preferences: {
       compactMode: { type: Boolean, default: false },
       soundEffects: { type: Boolean, default: true },
+    },
+    fitnessProfile: {
+      startingWeightKg: { type: Number, default: 51 },
+      targetWeightKg: { type: Number, default: 65 },
+      weeklyPplGoal: { type: Number, default: 2 },
     },
   },
   {

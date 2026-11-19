@@ -20,6 +20,7 @@ interface WorkoutLoggerModalProps {
   isOpen: boolean;
   onClose: () => void;
   workoutToEdit?: IWorkout | null;
+  onSuccess?: () => void;
 }
 
 interface SetEntry {
@@ -39,6 +40,7 @@ export default function WorkoutLoggerModal({
   isOpen,
   onClose,
   workoutToEdit,
+  onSuccess,
 }: WorkoutLoggerModalProps) {
   const queryClient = useQueryClient();
   const [split, setSplit] = useState<WorkoutSplit>("PUSH");
@@ -128,6 +130,9 @@ export default function WorkoutLoggerModal({
       queryClient.invalidateQueries({ queryKey: ["daily-protocol"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["progression-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["fitness-analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["fitness-progression"] });
+      onSuccess?.();
       onClose();
     },
   });
