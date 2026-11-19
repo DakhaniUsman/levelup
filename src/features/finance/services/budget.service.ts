@@ -10,7 +10,7 @@ export const DEFAULT_BUDGET_CATEGORIES: ICategoryBudget[] = [
   { categoryName: "FOOD", allocatedAmount: 7000 },
   { categoryName: "RENT", allocatedAmount: 5000 },
   { categoryName: "ELECTRICITY_BILL", allocatedAmount: 500 },
-  { categoryName: "HOME_SUPPORT", allocatedAmount: 5000 },
+  { categoryName: "HOME_SUPPORT", allocatedAmount: 10000 },
   { categoryName: "TRAVELLING", allocatedAmount: 2000 },
   { categoryName: "PERSONAL", allocatedAmount: 2000 },
   { categoryName: "MISCELLANEOUS", allocatedAmount: 3000 },
@@ -58,9 +58,16 @@ export class BudgetService {
         modified = true;
       }
 
-      // Safely ensure Home Support is available if not already present
-      if (!existingCategoryNames.has("HOME_SUPPORT") && !existingCategoryNames.has("HOME")) {
-        budget.categoryBudgets.push({ categoryName: "HOME_SUPPORT", allocatedAmount: 5000 });
+      // Safely ensure Home Support is available with desired ₹10,000 allocation
+      const homeCat = budget.categoryBudgets.find(
+        (c) => c.categoryName.trim().toUpperCase() === "HOME_SUPPORT" || c.categoryName.trim().toUpperCase() === "HOME"
+      );
+      if (!homeCat) {
+        budget.categoryBudgets.push({ categoryName: "HOME_SUPPORT", allocatedAmount: 10000 });
+        modified = true;
+      } else if (homeCat.allocatedAmount === 5000) {
+        // Upgrade previous 5000 placeholder to 10000
+        homeCat.allocatedAmount = 10000;
         modified = true;
       }
 

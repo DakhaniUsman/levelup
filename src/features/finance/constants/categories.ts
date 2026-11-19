@@ -47,7 +47,7 @@ export const STANDARD_CATEGORIES: CategoryMetadata[] = [
     value: "HOME_SUPPORT",
     label: "Home",
     icon: Heart,
-    defaultBudget: 5000,
+    defaultBudget: 10000,
     description: "Money transferred to family & household support",
   },
   {
