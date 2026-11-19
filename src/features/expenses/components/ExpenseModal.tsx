@@ -21,6 +21,7 @@ import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 interface ExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 const CATEGORIES: { label: string; value: ExpenseCategory; icon: typeof Coffee }[] = [
@@ -31,7 +32,7 @@ const CATEGORIES: { label: string; value: ExpenseCategory; icon: typeof Coffee }
   { label: "Miscellaneous", value: "MISCELLANEOUS", icon: CircleDot },
 ];
 
-export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
+export default function ExpenseModal({ isOpen, onClose, onSuccess }: ExpenseModalProps) {
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("FOOD");
@@ -66,6 +67,11 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
       queryClient.invalidateQueries({ queryKey: ["expenses-today"] });
       queryClient.invalidateQueries({ queryKey: ["daily-protocol"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-report"] });
+      onSuccess?.();
       setAmount("");
       setDescription("");
     },
@@ -90,6 +96,11 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
       queryClient.invalidateQueries({ queryKey: ["expenses-today"] });
       queryClient.invalidateQueries({ queryKey: ["daily-protocol"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-report"] });
+      onSuccess?.();
       setEditingExpense(null);
       setAmount("");
       setDescription("");
@@ -107,6 +118,11 @@ export default function ExpenseModal({ isOpen, onClose }: ExpenseModalProps) {
       queryClient.invalidateQueries({ queryKey: ["expenses-today"] });
       queryClient.invalidateQueries({ queryKey: ["daily-protocol"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-report"] });
+      onSuccess?.();
       setExpenseToDelete(null);
     },
   });

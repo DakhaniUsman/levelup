@@ -90,3 +90,54 @@ MongoDB Database
 - **Completion-Aware Suppression**: Never spams users with reminders for activities they have already done. If the gym workout is logged, workout reminders are suppressed; if all 5 Living Spheres are cleared, all daily protocol alerts for that day are suppressed.
 - **Quiet Hours Guard**: During configured sleep hours (e.g., 23:00 to 07:00), routine notifications are silenced. Emergency penalty directives can bypass quiet hours if necessary.
 - **Zero-Spam Idempotency (`NotificationDispatchLog`)**: Every dispatched alert creates a unique record indexed by `{ userId: 1, dedupeKey: 1 }`. Expired automatically after 7 days via MongoDB TTL index.
+
+## 6. Fitness & Transformation Subsystem Architecture
+
+### 6.1 Unified Data Pipeline & Single Source of Truth
+Workouts logged anywhere in the application (Dashboard HUD, Daily Protocol, or `/fitness` page) write directly to the canonical `Workout` collection. Individual sets, repetitions, weights, and personal record flags are preserved in full fidelity.
+
+```text
+Workout Entry (Modal / Dashboard / Protocol)
+       │
+       ▼
+POST / PATCH /api/workouts
+       │
+       ├─► ProtocolService.syncWorkoutStatus(userId, timezone) [Syncs Physical Sphere]
+       │
+       └─► Invalidate TanStack Keys: ["workouts"], ["daily-protocol"], ["dashboard-stats"],
+                                     ["fitness-analytics"], ["fitness-progression"]
+```
+
+### 6.2 Analytics & Strength Progression Engine
+- **Push / Pull / Legs (PPL) Taxonomy**: Complete muscle group classification (`PUSH`: Chest, Shoulders, Triceps; `PULL`: Back, Biceps, Forearms; `LEGS`: Quads, Hamstrings, Calves, Glutes; `CORE`, `CARDIO`).
+- **1-Rep-Max (1RM) Estimation**: Evaluated via the Epley formula:
+  $$1\text{RM} = \text{weight} \times \left(1 + \frac{\text{reps}}{30}\right)$$
+- **Personal Record (PR) Detection**: Real-time cross-session PR comparison per exercise (max weight and max estimated 1RM).
+- **Target Frequency Tracking**: Muscle group frequency vs. weekly 2x target (`weeklyPplGoal`).
+- **Body Transformation Tracker**: Tracks daily weigh-ins (`BodyWeight` model, compound index `{ userId: 1, date: 1 }`), calculates progress toward configurable goal ($51\text{ kg} \to 65\text{ kg}$), and renders SVG interactive trendline.
+
+## 7. Financial Intelligence Subsystem Architecture
+
+### 7.1 Unified Financial Ledger
+Expenses logged across the application store canonical records in the `Expense` collection with dynamic category support (`FOOD`, `TRAVELLING`, `ENTERTAINMENT`, `OUTING`, `MISCELLANEOUS`, and custom hunter categories).
+
+```text
+Expense Entry (Ledger / Dashboard / Protocol)
+       │
+       ▼
+POST / PATCH /api/expenses
+       │
+       ├─► ProtocolService.syncExpenseAudit(userId, timezone) [Syncs Financial Sphere]
+       │
+       └─► Invalidate TanStack Keys: ["expenses-today"], ["daily-protocol"], ["dashboard-stats"],
+                                     ["finance-overview"], ["finance-analytics"],
+                                     ["finance-budget"], ["finance-report"]
+```
+
+### 7.2 Monthly Budgeting & Financial Intelligence Engine
+- **Monthly Isolation**: Each month is uniquely partitioned in the `MonthlyBudget` collection by `{ userId: 1, month: "YYYY-MM" }`.
+- **Multiple Income Streams**: Planned vs. actual tracking for base salary, freelancing, investments, etc.
+- **Budget vs. Actual Variance**: Dynamic calculations of total spent, budget variance, net savings, and savings rate percentage ($(\text{actualIncome} - \text{actualExpenses}) / \text{actualIncome} \times 100$).
+- **Overspending Warning System**: Visual and programmatic status triggers (`NORMAL`, `WARNING` at $>80\%$, `CRITICAL` at $>100\%$).
+- **Daily Spending & Category Analytics**: SVG HUD bar chart for daily expense velocity and category percentage breakdown.
+- **Executive Monthly Report**: Automatically computes largest expense categories, top spending day, daily averages, and actionable behavioral recommendations.

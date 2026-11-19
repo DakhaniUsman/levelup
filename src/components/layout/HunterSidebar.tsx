@@ -13,6 +13,8 @@ import {
   Shield,
   Terminal,
   X,
+  Dumbbell,
+  IndianRupee,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/lib/ui-store";
@@ -47,6 +49,18 @@ const NAV_ITEMS = [
     href: "/knowledge",
     icon: BookOpen,
     badge: null,
+  },
+  {
+    label: "Fitness & Form",
+    href: "/fitness",
+    icon: Dumbbell,
+    badge: "PPL",
+  },
+  {
+    label: "Financial Intel",
+    href: "/finance",
+    icon: IndianRupee,
+    badge: "₹",
   },
   {
     label: "Progression & Ledger",

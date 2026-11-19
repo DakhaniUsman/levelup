@@ -14,6 +14,9 @@ import {
   Loader2,
   Dumbbell,
   Receipt,
+  IndianRupee,
+  Scale,
+  Wallet,
 } from "lucide-react";
 import { PopulatedOccurrence } from "@/features/quests/services/quest.service";
 import { ITask } from "@/models/Task";
@@ -66,6 +69,25 @@ interface DashboardData {
     completed: number;
     percent: number;
   }[];
+  fitnessSummary?: {
+    latestWorkout: { title: string; split: string; date: string } | null;
+    weeklyWorkoutCount: number;
+    totalVolumeThisMonth: number;
+    totalPRs: number;
+    currentWeight: number;
+    targetWeight: number;
+    progressPercent: number;
+  };
+  financeSummary?: {
+    month: string;
+    income: number;
+    expenses: number;
+    netSavings: number;
+    savingsRate: number;
+    remainingBudget: number;
+    budgetUtilization: number;
+    highestCategory: string | null;
+  };
 }
 
 const DEFAULT_CATEGORIES = [
@@ -350,6 +372,116 @@ export default function DashboardPage() {
         onOpenExpenseModal={() => setIsExpenseModalOpen(true)}
         onOpenJudgementModal={() => setIsJudgementModalOpen(true)}
       />
+
+      {/* 7.35 FITNESS & FINANCIAL COMMAND INTELLIGENCE WIDGETS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
+        {/* Fitness & Transformation Summary Card */}
+        <div className="hud-card p-6 rounded-2xl border border-rose-900/40 bg-[#131620]/60 space-y-4 relative overflow-hidden">
+          <div className="flex items-center justify-between pb-3 border-b border-[#1F2435]">
+            <div className="flex items-center gap-2">
+              <Dumbbell className="w-4 h-4 text-rose-400" />
+              <h2 className="font-bold text-white uppercase tracking-wider">
+                FITNESS & TRANSFORMATION
+              </h2>
+            </div>
+            <Link
+              href="/fitness"
+              className="text-[#00F0FF] hover:underline flex items-center gap-1 font-bold text-[11px]"
+            >
+              <span>Full Analytics</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl bg-[#090A0F] border border-[#1F2435]">
+              <span className="text-[10px] text-[#64748B] block">WEEKLY FREQUENCY</span>
+              <span className="text-xl font-bold text-white">
+                {data?.fitnessSummary?.weeklyWorkoutCount || 0}
+              </span>
+              <span className="text-[10px] text-[#94A3B8] block">sessions / week</span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#090A0F] border border-[#1F2435]">
+              <span className="text-[10px] text-[#64748B] block">BODY WEIGHT GOAL</span>
+              <span className="text-xl font-bold text-emerald-400">
+                {data?.fitnessSummary?.currentWeight || 51}{" "}
+                <span className="text-xs text-[#94A3B8]">
+                  &rarr; {data?.fitnessSummary?.targetWeight || 65} kg
+                </span>
+              </span>
+              <span className="text-[10px] text-[#00F0FF] block">
+                {data?.fitnessSummary?.progressPercent || 0}% completed
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#090A0F] border border-[#1F2435] flex items-center justify-between">
+            <span className="text-[#94A3B8]">Latest Session:</span>
+            <span className="text-white font-bold truncate max-w-[200px]">
+              {data?.fitnessSummary?.latestWorkout
+                ? `${data.fitnessSummary.latestWorkout.title} [${data.fitnessSummary.latestWorkout.split}]`
+                : "No workouts recorded yet"}
+            </span>
+          </div>
+        </div>
+
+        {/* Financial Intelligence Summary Card */}
+        <div className="hud-card p-6 rounded-2xl border border-emerald-900/40 bg-[#131620]/60 space-y-4 relative overflow-hidden">
+          <div className="flex items-center justify-between pb-3 border-b border-[#1F2435]">
+            <div className="flex items-center gap-2">
+              <IndianRupee className="w-4 h-4 text-emerald-400" />
+              <h2 className="font-bold text-white uppercase tracking-wider">
+                FINANCIAL INTELLIGENCE ({data?.financeSummary?.month || "Current"})
+              </h2>
+            </div>
+            <Link
+              href="/finance"
+              className="text-[#00F0FF] hover:underline flex items-center gap-1 font-bold text-[11px]"
+            >
+              <span>Full Intel</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl bg-[#090A0F] border border-[#1F2435]">
+              <span className="text-[10px] text-[#64748B] block">NET SAVINGS</span>
+              <span
+                className={`text-xl font-bold ${
+                  (data?.financeSummary?.netSavings || 0) >= 0
+                    ? "text-emerald-400"
+                    : "text-rose-400"
+                }`}
+              >
+                ₹{(data?.financeSummary?.netSavings || 0).toLocaleString("en-IN")}
+              </span>
+              <span className="text-[10px] text-[#94A3B8] block">
+                Rate: {data?.financeSummary?.savingsRate || 0}%
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#090A0F] border border-[#1F2435]">
+              <span className="text-[10px] text-[#64748B] block">BUDGET REMAINING</span>
+              <span className="text-xl font-bold text-[#00F0FF]">
+                ₹{(data?.financeSummary?.remainingBudget || 0).toLocaleString("en-IN")}
+              </span>
+              <span className="text-[10px] text-[#64748B] block">
+                {data?.financeSummary?.budgetUtilization || 0}% used
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#090A0F] border border-[#1F2435] flex items-center justify-between">
+            <span className="text-[#94A3B8]">Primary Drain:</span>
+            <span className="text-white font-bold truncate max-w-[200px]">
+              {data?.financeSummary?.highestCategory
+                ? data.financeSummary.highestCategory
+                : "No expenditures logged yet"}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* 7.4 Life Categories HUD Progress */}
       <div className="space-y-3">

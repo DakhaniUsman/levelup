@@ -133,5 +133,27 @@
 - `dispatchedAt`: Date (TTL index expiring documents after 7 days)
 - Compound Unique Index: `{ userId: 1, dedupeKey: 1 }`
 
+### 14. BodyWeight (`models/BodyWeight.ts`)
+- `userId`: ObjectId (ref: User, index)
+- `date`: String (Format: `YYYY-MM-DD`, index)
+- `weightKg`: Number (min: 20, max: 300)
+- `notes`: String (optional)
+- Timestamps: `createdAt`, `updatedAt`
+- Compound Unique Index: `{ userId: 1, date: 1 }`
+
+### 15. MonthlyBudget (`models/MonthlyBudget.ts`)
+- `userId`: ObjectId (ref: User, index)
+- `month`: String (Format: `YYYY-MM`, index)
+- `incomes`: Array of `{ source: String, plannedAmount: Number, actualAmount: Number }`
+- `categoryBudgets`: Array of `{ category: String, plannedAmount: Number }`
+- `savingsTarget`: Number (default: 0)
+- `notes`: String (optional)
+- Timestamps: `createdAt`, `updatedAt`
+- Compound Unique Index: `{ userId: 1, month: 1 }`
+
+### 16. Schema Extensions
+- **UserProfile (`models/UserProfile.ts`)**: Added `fitnessProfile: { startingWeightKg: Number (default 51), targetWeightKg: Number (default 65), weeklyPplGoal: Number (default 2) }`.
+- **Expense (`models/Expense.ts`)**: Relaxed `category` field from strict enum to String to support dynamic user-defined categories alongside default categories (`FOOD`, `TRAVELLING`, `ENTERTAINMENT`, `OUTING`, `MISCELLANEOUS`).
+
 
 
