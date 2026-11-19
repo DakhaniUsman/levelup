@@ -3,6 +3,8 @@ import mongoose, { Schema, Document, Model, Types } from "mongoose";
 export type ExpenseCategory =
   | "FOOD"
   | "RENT"
+  | "ELECTRICITY_BILL"
+  | "HOME_SUPPORT"
   | "TRAVELLING"
   | "ENTERTAINMENT"
   | "PERSONAL"

@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
+  Filter,
 } from "lucide-react";
 import { IExpense } from "@/models/Expense";
 import {
@@ -31,6 +32,11 @@ import {
 import { IMonthlyBudget, IIncomeSource, ICategoryBudget } from "@/models/MonthlyBudget";
 import ExpenseModal from "@/features/expenses/components/ExpenseModal";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
+import {
+  formatCategoryLabel,
+  getCategoryIcon,
+  STANDARD_CATEGORIES,
+} from "@/features/finance/constants/categories";
 
 export default function FinancialIntelligencePage() {
   const queryClient = useQueryClient();
@@ -38,6 +44,7 @@ export default function FinancialIntelligencePage() {
   // Selected month state (defaults to current YYYY-MM)
   const currentMonthStr = new Date().toISOString().slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
 
   // Modals state
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -51,6 +58,8 @@ export default function FinancialIntelligencePage() {
   const [categoriesForm, setCategoriesForm] = useState<ICategoryBudget[]>([
     { categoryName: "FOOD", allocatedAmount: 7000 },
     { categoryName: "RENT", allocatedAmount: 5000 },
+    { categoryName: "ELECTRICITY_BILL", allocatedAmount: 500 },
+    { categoryName: "HOME_SUPPORT", allocatedAmount: 5000 },
     { categoryName: "TRAVELLING", allocatedAmount: 2000 },
     { categoryName: "PERSONAL", allocatedAmount: 2000 },
     { categoryName: "MISCELLANEOUS", allocatedAmount: 3000 },
@@ -177,9 +186,14 @@ export default function FinancialIntelligencePage() {
     setSelectedMonth(`${y}-${String(m).padStart(2, "0")}`);
   };
 
-  const monthExpenses = (expensesData?.expenses || []).filter((e) =>
+  const rawMonthExpenses = (expensesData?.expenses || []).filter((e) =>
     e.targetDate.startsWith(selectedMonth)
   );
+
+  const monthExpenses = rawMonthExpenses.filter((e) => {
+    if (categoryFilter === "ALL") return true;
+    return e.category.trim().toUpperCase() === categoryFilter.trim().toUpperCase();
+  });
 
   return (
     <div className="space-y-8 pb-16 font-mono text-xs">
@@ -353,31 +367,38 @@ export default function FinancialIntelligencePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {overview?.categories && overview.categories.length > 0 ? (
-            overview.categories.map((cat) => (
-              <div
-                key={cat.category}
-                className={`p-4 rounded-xl border transition-all space-y-2.5 ${
-                  cat.isOverbudget
-                    ? "bg-rose-950/20 border-rose-500/50 text-rose-200"
-                    : "bg-[#090A0F] border-[#1F2435] text-[#94A3B8]"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-xs">{cat.category}</span>
-                    {cat.isOverbudget && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-950 border border-rose-500 text-rose-400">
-                        OVERBUDGET
+            overview.categories.map((cat) => {
+              const CatIcon = getCategoryIcon(cat.category);
+              return (
+                <div
+                  key={cat.category}
+                  className={`p-4 rounded-xl border transition-all space-y-2.5 ${
+                    cat.isOverbudget
+                      ? "bg-rose-950/20 border-rose-500/50 text-rose-200"
+                      : "bg-[#090A0F] border-[#1F2435] text-[#94A3B8]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded bg-[#131620] border border-[#1F2435] text-[#00F0FF] shrink-0">
+                        <CatIcon className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-bold text-white text-xs">
+                        {formatCategoryLabel(cat.category)}
                       </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-white font-bold">
-                    ₹{cat.actual.toLocaleString("en-IN")}{" "}
-                    <span className="font-normal text-[#64748B]">
-                      / ₹{cat.budgeted.toLocaleString("en-IN")}
+                      {cat.isOverbudget && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-950 border border-rose-500 text-rose-400">
+                          OVERBUDGET
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-white font-bold">
+                      ₹{cat.actual.toLocaleString("en-IN")}{" "}
+                      <span className="font-normal text-[#64748B]">
+                        / ₹{cat.budgeted.toLocaleString("en-IN")}
+                      </span>
                     </span>
-                  </span>
-                </div>
+                  </div>
 
                 {/* Progress bar */}
                 <div className="w-full h-1.5 rounded-full bg-[#1F2435] overflow-hidden">
@@ -399,7 +420,8 @@ export default function FinancialIntelligencePage() {
                   <span>{cat.percentUsed}% utilized</span>
                 </div>
               </div>
-            ))
+            );
+          })
           ) : (
             <div className="py-8 text-center text-[#64748B] col-span-2">
               No budget categories configured yet for this month.
@@ -484,7 +506,7 @@ export default function FinancialIntelligencePage() {
               analytics.categoryDistribution.map((cat) => (
                 <div key={cat.category} className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-white font-bold">{cat.category}</span>
+                    <span className="text-white font-bold">{formatCategoryLabel(cat.category)}</span>
                     <span className="text-[#00F0FF] font-bold">
                       ₹{cat.amount.toLocaleString("en-IN")}{" "}
                       <span className="text-[#64748B] font-normal">({cat.percentage}%)</span>
@@ -536,7 +558,7 @@ export default function FinancialIntelligencePage() {
 
       {/* 6. Transaction Ledger Table */}
       <div className="hud-card p-6 rounded-2xl border border-[#1F2435] space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#1F2435]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#1F2435]">
           <div>
             <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Receipt className="w-4 h-4 text-emerald-400" />
@@ -546,13 +568,30 @@ export default function FinancialIntelligencePage() {
               Canonical audit records for {selectedMonth}
             </p>
           </div>
-          <button
-            onClick={() => setIsExpenseModalOpen(true)}
-            className="px-3 py-1.5 rounded-lg bg-[#131620] border border-[#1F2435] hover:border-emerald-500 text-emerald-400 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Transaction</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#090A0F] border border-[#1F2435]">
+              <Filter className="w-3.5 h-3.5 text-[#64748B]" />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="bg-transparent text-white text-xs focus:outline-none cursor-pointer"
+              >
+                <option value="ALL" className="bg-[#090A0F] text-white">All Categories</option>
+                {STANDARD_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value} className="bg-[#090A0F] text-white">
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => setIsExpenseModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-[#131620] border border-[#1F2435] hover:border-emerald-500 text-emerald-400 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Transaction</span>
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -573,7 +612,7 @@ export default function FinancialIntelligencePage() {
                     <td className="py-2.5 px-3 font-bold text-white">{exp.targetDate}</td>
                     <td className="py-2.5 px-3">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#131620] border border-[#1F2435] text-[#00F0FF]">
-                        {exp.category}
+                        {formatCategoryLabel(exp.category)}
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-white">{exp.description}</td>
@@ -724,20 +763,36 @@ export default function FinancialIntelligencePage() {
               </div>
 
               <div className="space-y-2">
+                <datalist id="standard-budget-categories">
+                  {STANDARD_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label} (Default: ₹{c.defaultBudget.toLocaleString("en-IN")})
+                    </option>
+                  ))}
+                </datalist>
+
                 {categoriesForm.map((cat, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Category (e.g. FOOD, RENT, BILLS)"
-                      value={cat.categoryName}
-                      onChange={(e) => {
-                        const copy = [...categoriesForm];
-                        copy[i].categoryName = e.target.value.toUpperCase();
-                        setCategoriesForm(copy);
-                      }}
-                      className="flex-1 px-3 py-1.5 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-xs focus:border-[#00F0FF] focus:outline-none"
-                    />
-                    <div className="relative w-32">
+                    <div className="flex-1 flex flex-col">
+                      <input
+                        type="text"
+                        list="standard-budget-categories"
+                        placeholder="Category (e.g. FOOD, RENT, ELECTRICITY_BILL)"
+                        value={cat.categoryName}
+                        onChange={(e) => {
+                          const copy = [...categoriesForm];
+                          copy[i].categoryName = e.target.value.toUpperCase();
+                          setCategoriesForm(copy);
+                        }}
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-xs focus:border-[#00F0FF] focus:outline-none"
+                      />
+                      {cat.categoryName && (
+                        <span className="text-[10px] text-[#64748B] mt-0.5 pl-1">
+                          {formatCategoryLabel(cat.categoryName)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative w-32 shrink-0">
                       <span className="absolute left-2.5 top-1.5 text-[#64748B]">₹</span>
                       <input
                         type="number"
@@ -755,7 +810,7 @@ export default function FinancialIntelligencePage() {
                       <button
                         type="button"
                         onClick={() => setCategoriesForm(categoriesForm.filter((_, idx) => idx !== i))}
-                        className="text-[#64748B] hover:text-rose-400 p-1 cursor-pointer"
+                        className="text-[#64748B] hover:text-rose-400 p-1 cursor-pointer shrink-0"
                       >
                         &times;
                       </button>

@@ -153,7 +153,8 @@
 
 ### 16. Schema Extensions
 - **UserProfile (`models/UserProfile.ts`)**: Added `fitnessProfile: { startingWeightKg: Number (default 51), targetWeightKg: Number (default 65), weeklyPplGoal: Number (default 2) }`.
-- **Expense (`models/Expense.ts`)**: Relaxed `category` field from strict enum to String to support dynamic user-defined categories alongside default categories (`FOOD`, `TRAVELLING`, `ENTERTAINMENT`, `OUTING`, `MISCELLANEOUS`).
+- **Expense (`models/Expense.ts`)**: Expanded `ExpenseCategory` with `RENT`, `ELECTRICITY_BILL` (EB), and `HOME_SUPPORT` (Home) alongside standard categories (`FOOD`, `TRAVELLING`, `ENTERTAINMENT`, `OUTING`, `PERSONAL`, `MISCELLANEOUS`), while preserving dynamic String flexibility for custom hunter categories.
+- **MonthlyBudget (`models/MonthlyBudget.ts`)**: Pre-populates `ELECTRICITY_BILL` with default ₹500 planned allocation for new monthly budgets and non-destructively backfills missing EB allocations into existing monthly budgets upon retrieval without overwriting user customizations or creating phantom expenses.
 
 
 

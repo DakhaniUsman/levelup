@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import dbConnect from "@/lib/db";
 import Expense, { IExpense } from "@/models/Expense";
 import { BudgetService } from "./budget.service";
+import { formatCategoryLabel } from "../constants/categories";
 
 export interface CategoryComparison {
   category: string;
@@ -151,7 +152,7 @@ export class FinancialAnalyticsService {
 
     const highestSpendingCategory =
       categories.length > 0 && categories[0].actual > 0
-        ? { name: categories[0].category, amount: categories[0].actual }
+        ? { name: formatCategoryLabel(categories[0].category), amount: categories[0].actual }
         : null;
 
     return {

@@ -9,6 +9,8 @@ import MonthlyBudget, {
 export const DEFAULT_BUDGET_CATEGORIES: ICategoryBudget[] = [
   { categoryName: "FOOD", allocatedAmount: 7000 },
   { categoryName: "RENT", allocatedAmount: 5000 },
+  { categoryName: "ELECTRICITY_BILL", allocatedAmount: 500 },
+  { categoryName: "HOME_SUPPORT", allocatedAmount: 5000 },
   { categoryName: "TRAVELLING", allocatedAmount: 2000 },
   { categoryName: "PERSONAL", allocatedAmount: 2000 },
   { categoryName: "MISCELLANEOUS", allocatedAmount: 3000 },
@@ -37,6 +39,34 @@ export class BudgetService {
         savingsTarget: 10000,
         notes: "",
       });
+    } else {
+      // Non-destructive check: if standard categories (EB, RENT, HOME_SUPPORT) are missing from existing budget, safely backfill
+      const existingCategoryNames = new Set(
+        (budget.categoryBudgets || []).map((c) => c.categoryName.trim().toUpperCase())
+      );
+      let modified = false;
+
+      // Safely ensure Electricity Bill (EB) is available with default ₹500 allocation
+      if (!existingCategoryNames.has("ELECTRICITY_BILL") && !existingCategoryNames.has("EB")) {
+        budget.categoryBudgets.push({ categoryName: "ELECTRICITY_BILL", allocatedAmount: 500 });
+        modified = true;
+      }
+
+      // Safely ensure Rent is available if not already present
+      if (!existingCategoryNames.has("RENT")) {
+        budget.categoryBudgets.push({ categoryName: "RENT", allocatedAmount: 5000 });
+        modified = true;
+      }
+
+      // Safely ensure Home Support is available if not already present
+      if (!existingCategoryNames.has("HOME_SUPPORT") && !existingCategoryNames.has("HOME")) {
+        budget.categoryBudgets.push({ categoryName: "HOME_SUPPORT", allocatedAmount: 5000 });
+        modified = true;
+      }
+
+      if (modified) {
+        await budget.save();
+      }
     }
 
     return budget;
