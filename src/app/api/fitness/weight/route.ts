@@ -21,9 +21,10 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get("limit") || "60", 10);
+    const range = searchParams.get("range") || "ALL";
+    const limit = parseInt(searchParams.get("limit") || "365", 10);
 
-    const stats = await BodyWeightService.getWeightStats(session.userId, limit);
+    const stats = await BodyWeightService.getWeightStats(session.userId, range, limit);
     return successResponse(stats, "Weight transformation history retrieved successfully");
   } catch (error) {
     return handleApiError(error);

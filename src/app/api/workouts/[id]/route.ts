@@ -4,6 +4,7 @@ import dbConnect from "@/lib/db";
 import Workout from "@/models/Workout";
 import UserProfile from "@/models/UserProfile";
 import { ProtocolService } from "@/features/protocol/services/protocol.service";
+import { PRDetectionService } from "@/features/workouts/services/pr-detection.service";
 import { CacheService } from "@/lib/cache.service";
 import {
   successResponse,
@@ -81,7 +82,16 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     if (validated.title !== undefined) workout.title = validated.title;
     if (validated.durationMinutes !== undefined) workout.durationMinutes = validated.durationMinutes;
     if (validated.intensityRating !== undefined) workout.intensityRating = validated.intensityRating;
-    if (validated.exercises !== undefined) workout.exercises = validated.exercises;
+    let newPRs: any[] = [];
+    if (validated.exercises !== undefined) {
+      const prResult = await PRDetectionService.detectAndTagPRs(
+        session.userId,
+        validated.exercises,
+        id
+      );
+      workout.exercises = prResult.exercises;
+      newPRs = prResult.newPRs;
+    }
     if (validated.notes !== undefined) workout.notes = validated.notes;
     if (validated.targetDate !== undefined) workout.targetDate = validated.targetDate;
 
@@ -96,7 +106,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     // Invalidate fitness and dashboard caches
     await CacheService.invalidateFitness(session.userId);
 
-    return successResponse(workout, "Workout updated successfully");
+    return successResponse({ workout, newPRs }, "Workout updated successfully");
   } catch (error) {
     return handleApiError(error);
   }

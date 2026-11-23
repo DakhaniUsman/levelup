@@ -232,23 +232,26 @@ export class FinancialAnalyticsService {
       amount,
     }));
 
-    // Weekly breakdown
+    // Weekly breakdown (5 calendar-aligned buckets)
     let w1 = 0,
       w2 = 0,
       w3 = 0,
-      w4 = 0;
+      w4 = 0,
+      w5 = 0;
     for (const d of dailySpending) {
       if (d.day <= 7) w1 += d.amount;
       else if (d.day <= 14) w2 += d.amount;
       else if (d.day <= 21) w3 += d.amount;
-      else w4 += d.amount;
+      else if (d.day <= 28) w4 += d.amount;
+      else w5 += d.amount;
     }
 
     const weeklySpending = [
       { weekLabel: "Week 1 (1-7)", amount: w1 },
       { weekLabel: "Week 2 (8-14)", amount: w2 },
       { weekLabel: "Week 3 (15-21)", amount: w3 },
-      { weekLabel: "Week 4+ (22+)", amount: w4 },
+      { weekLabel: "Week 4 (22-28)", amount: w4 },
+      { weekLabel: "Week 5 (29-End)", amount: w5 },
     ];
 
     const categoryDistribution = Array.from(catMap.entries())

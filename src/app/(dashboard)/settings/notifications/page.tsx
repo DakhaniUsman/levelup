@@ -254,7 +254,7 @@ export default function NotificationsSettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl space-y-8 pb-12">
+    <div className="w-full space-y-8 pb-12">
       {/* Navigation & Header */}
       <div className="space-y-3">
         <Link

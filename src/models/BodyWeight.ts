@@ -5,6 +5,7 @@ export interface IBodyWeight extends Document {
   date: string; // YYYY-MM-DD
   weightKg: number;
   notes?: string;
+  recordedAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,6 +34,11 @@ const BodyWeightSchema = new Schema<IBodyWeight>(
       default: "",
       maxlength: [200, "Notes cannot exceed 200 characters"],
       trim: true,
+    },
+    recordedAt: {
+      type: Date,
+      default: Date.now,
+      index: true,
     },
   },
   {

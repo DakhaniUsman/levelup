@@ -25,6 +25,7 @@ export const RegisterUserSchema = z.object({
 export const LoginSchema = z.object({
   identifier: z.string().min(1, "Email or username is required"),
   password: z.string().min(1, "Password is required"),
+  rememberMe: z.boolean().default(false).optional(),
 });
 
 export type RegisterUserInput = z.infer<typeof RegisterUserSchema>;

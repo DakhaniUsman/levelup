@@ -1,12 +1,14 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 export type WorkoutSplit = "PUSH" | "PULL" | "LEGS" | "UPPER" | "LOWER" | "CUSTOM";
+export type PRType = "WEIGHT_PR" | "REPS_PR" | null;
 
 export interface IWorkoutSet {
   setNumber: number;
   reps: number;
   weightKg: number;
   isPersonalRecord?: boolean;
+  prType?: PRType;
 }
 
 export interface IWorkoutExercise {
@@ -34,6 +36,7 @@ const WorkoutSetSchema = new Schema<IWorkoutSet>(
     reps: { type: Number, required: true },
     weightKg: { type: Number, required: true },
     isPersonalRecord: { type: Boolean, default: false },
+    prType: { type: String, enum: ["WEIGHT_PR", "REPS_PR", null], default: null },
   },
   { _id: false }
 );

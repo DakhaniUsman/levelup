@@ -10,6 +10,7 @@ export default function LoginForm() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -22,7 +23,7 @@ export default function LoginForm() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier, password, rememberMe }),
       });
 
       const data = await res.json();
@@ -113,6 +114,20 @@ export default function LoginForm() {
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[#090A0F] border border-[#1F2435] text-white text-sm focus:border-[#00F0FF] focus:outline-none focus:ring-1 focus:ring-[#00F0FF] transition-all font-mono placeholder:text-[#64748B]"
               />
             </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded bg-[#090A0F] border border-[#1F2435] text-[#00F0FF] focus:ring-[#00F0FF] focus:ring-offset-0 focus:ring-1 accent-[#00F0FF] cursor-pointer"
+              />
+              <span className="text-xs font-mono text-[#94A3B8] group-hover:text-white transition-colors">
+                Remember Me
+              </span>
+            </label>
           </div>
 
           <button

@@ -32,6 +32,7 @@ import { WeightStats } from "@/features/fitness/services/body-weight.service";
 import WorkoutLoggerModal from "@/features/workouts/components/WorkoutLoggerModal";
 import WorkoutHistoryModal from "@/features/workouts/components/WorkoutHistoryModal";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
+import BodyTransformationGraph from "@/features/fitness/components/BodyTransformationGraph";
 
 export default function FitnessTransformationPage() {
   const queryClient = useQueryClient();
@@ -46,6 +47,7 @@ export default function FitnessTransformationPage() {
   // Filter & selection states
   const [selectedSplit, setSelectedSplit] = useState<"ALL" | "PUSH" | "PULL" | "LEGS">("ALL");
   const [selectedExercise, setSelectedExercise] = useState<string>("Dumbbell Bench Press");
+  const [weightRange, setWeightRange] = useState<string>("ALL");
   const [weightInput, setWeightInput] = useState<string>("");
   const [weightNotes, setWeightNotes] = useState<string>("");
   const [startingWeightInput, setStartingWeightInput] = useState<string>("51");
@@ -79,9 +81,9 @@ export default function FitnessTransformationPage() {
 
   // 3. Fetch Weight History & Transformation Stats
   const { data: weightData, isLoading: isWeightLoading } = useQuery<WeightStats>({
-    queryKey: ["body-weight"],
+    queryKey: ["body-weight", weightRange],
     queryFn: async () => {
-      const res = await fetch("/api/fitness/weight");
+      const res = await fetch(`/api/fitness/weight?range=${weightRange}`);
       const json = await res.json();
       return json.data;
     },
@@ -580,16 +582,29 @@ export default function FitnessTransformationPage() {
         )}
       </div>
 
-      {/* 5. Body Weight Transformation History */}
+      {/* 5. Body Weight Transformation History & Graph */}
+      <BodyTransformationGraph
+        weightData={weightData}
+        isLoading={isWeightLoading}
+        activeRange={weightRange}
+        onRangeChange={(range) => setWeightRange(range)}
+        onOpenLogModal={() => setIsWeightModalOpen(true)}
+        onOpenProfileModal={() => {
+          setStartingWeightInput(String(weightData?.startingWeight || 51));
+          setTargetWeightInput(String(weightData?.targetWeight || 65));
+          setIsProfileModalOpen(true);
+        }}
+      />
+
       <div className="hud-card p-6 rounded-2xl border border-[#1F2435] space-y-5 font-mono">
         <div className="flex items-center justify-between pb-3 border-b border-[#1F2435]">
           <div>
             <h2 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Scale className="w-5 h-5 text-emerald-400" />
-              BODY WEIGHT LOGS & TRENDLINE
+              RECORDED WEIGHT MEASUREMENT LOGS
             </h2>
             <p className="text-xs text-[#94A3B8]">
-              Current: {weightData?.currentWeight || 51} kg &bull; Target: {weightData?.targetWeight || 65} kg &bull; Gain: +{weightData?.weightGained || 0} kg
+              Granular logbook of all verified weigh-ins within selected period ({weightRange})
             </p>
           </div>
           <button

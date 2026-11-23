@@ -32,6 +32,8 @@ import {
 import { IMonthlyBudget, IIncomeSource, ICategoryBudget } from "@/models/MonthlyBudget";
 import ExpenseModal from "@/features/expenses/components/ExpenseModal";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
+import FinancialDonutChart from "@/features/finance/components/FinancialDonutChart";
+import OverspendingInsightsPanel from "@/features/finance/components/OverspendingInsightsPanel";
 import {
   formatCategoryLabel,
   getCategoryIcon,
@@ -42,8 +44,13 @@ export default function FinancialIntelligencePage() {
   const queryClient = useQueryClient();
 
   // Selected month state (defaults to current YYYY-MM)
-  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  const todayDateStr = new Date().toISOString().slice(0, 10);
+  const currentMonthStr = todayDateStr.slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
+  const [timeView, setTimeView] = useState<"DAY" | "WEEK" | "MONTH">("MONTH");
+  const [selectedDate, setSelectedDate] = useState<string>(todayDateStr);
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [selectedChartCategory, setSelectedChartCategory] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
 
   // Modals state
@@ -186,13 +193,55 @@ export default function FinancialIntelligencePage() {
     setSelectedMonth(`${y}-${String(m).padStart(2, "0")}`);
   };
 
-  const rawMonthExpenses = (expensesData?.expenses || []).filter((e) =>
+  // Day navigation helper
+  const navigateDay = (direction: -1 | 1) => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + direction);
+    const newDateStr = d.toISOString().slice(0, 10);
+    setSelectedDate(newDateStr);
+    setSelectedMonth(newDateStr.slice(0, 7));
+  };
+
+  const allExpenses = expensesData?.expenses || [];
+  const rawMonthExpenses = allExpenses.filter((e) =>
     e.targetDate.startsWith(selectedMonth)
   );
 
-  const monthExpenses = rawMonthExpenses.filter((e) => {
-    if (categoryFilter === "ALL") return true;
-    return e.category.trim().toUpperCase() === categoryFilter.trim().toUpperCase();
+  // Filter according to active timeView:
+  let timeScopedExpenses = rawMonthExpenses;
+  if (timeView === "DAY") {
+    timeScopedExpenses = allExpenses.filter((e) => e.targetDate === selectedDate);
+  } else if (timeView === "WEEK") {
+    timeScopedExpenses = rawMonthExpenses.filter((e) => {
+      const dayNum = parseInt(e.targetDate.slice(8, 10), 10);
+      if (selectedWeek === 1) return dayNum >= 1 && dayNum <= 7;
+      if (selectedWeek === 2) return dayNum >= 8 && dayNum <= 14;
+      if (selectedWeek === 3) return dayNum >= 15 && dayNum <= 21;
+      if (selectedWeek === 4) return dayNum >= 22 && dayNum <= 28;
+      return dayNum >= 29;
+    });
+  }
+
+  // Calculate dynamic category distribution for active time view
+  const timeScopedTotalSpent = timeScopedExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const dynamicCatMap = new Map<string, number>();
+  for (const exp of timeScopedExpenses) {
+    const c = (exp.category || "MISCELLANEOUS").trim().toUpperCase();
+    dynamicCatMap.set(c, (dynamicCatMap.get(c) || 0) + exp.amount);
+  }
+  const dynamicCategoryDistribution = Array.from(dynamicCatMap.entries())
+    .map(([category, amount]) => ({
+      category,
+      amount,
+      percentage: timeScopedTotalSpent > 0 ? Math.round((amount / timeScopedTotalSpent) * 100) : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  // Then apply category filter (from donut click or dropdown):
+  const effectiveCategoryFilter = selectedChartCategory || categoryFilter;
+  const displayExpenses = timeScopedExpenses.filter((e) => {
+    if (effectiveCategoryFilter === "ALL" || !effectiveCategoryFilter) return true;
+    return e.category.trim().toUpperCase() === effectiveCategoryFilter.trim().toUpperCase();
   });
 
   return (
@@ -215,28 +264,95 @@ export default function FinancialIntelligencePage() {
           </div>
         </div>
 
-        {/* Month Selector & Action Buttons */}
+        {/* Time Filter Controls & Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Month Switcher */}
-          <div className="flex items-center rounded-xl bg-[#090A0F] border border-[#1F2435] p-1">
-            <button
-              onClick={() => navigateMonth(-1)}
-              className="p-1.5 rounded-lg text-[#64748B] hover:text-white transition-colors cursor-pointer"
-              title="Previous Month"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="px-3 font-bold text-white text-xs tracking-wider">
-              {selectedMonth}
-            </span>
-            <button
-              onClick={() => navigateMonth(1)}
-              className="p-1.5 rounded-lg text-[#64748B] hover:text-white transition-colors cursor-pointer"
-              title="Next Month"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+          {/* Day / Week / Month Mode Tabs */}
+          <div className="flex items-center rounded-xl bg-[#090A0F] border border-[#1F2435] p-1 text-xs">
+            {(["DAY", "WEEK", "MONTH"] as const).map((view) => (
+              <button
+                key={view}
+                onClick={() => setTimeView(view)}
+                className={`px-3 py-1 rounded-lg transition-all font-bold cursor-pointer ${
+                  timeView === view
+                    ? "bg-[#131620] text-[#00F0FF] border border-[#00F0FF]/30 shadow-[0_0_8px_rgba(0,240,255,0.2)]"
+                    : "text-[#64748B] hover:text-white"
+                }`}
+              >
+                {view}
+              </button>
+            ))}
           </div>
+
+          {/* Conditional Time Navigator based on view */}
+          {timeView === "DAY" && (
+            <div className="flex items-center rounded-xl bg-[#090A0F] border border-[#1F2435] p-1">
+              <button
+                onClick={() => navigateDay(-1)}
+                className="p-1.5 rounded-lg text-[#64748B] hover:text-white transition-colors cursor-pointer"
+                title="Previous Day"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-3 font-bold text-white text-xs tracking-wider">
+                {selectedDate}
+              </span>
+              <button
+                onClick={() => navigateDay(1)}
+                className="p-1.5 rounded-lg text-[#64748B] hover:text-white transition-colors cursor-pointer"
+                title="Next Day"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {timeView === "WEEK" && (
+            <div className="flex items-center rounded-xl bg-[#090A0F] border border-[#1F2435] p-1 text-xs">
+              {[1, 2, 3, 4, 5].map((wk) => (
+                <button
+                  key={wk}
+                  onClick={() => setSelectedWeek(wk)}
+                  className={`px-2 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    selectedWeek === wk
+                      ? "bg-[#131620] text-purple-400 border border-purple-500/40 shadow-[0_0_8px_rgba(168,85,247,0.2)]"
+                      : "text-[#64748B] hover:text-white"
+                  }`}
+                >
+                  {wk === 1
+                    ? "W1 (1-7)"
+                    : wk === 2
+                    ? "W2 (8-14)"
+                    : wk === 3
+                    ? "W3 (15-21)"
+                    : wk === 4
+                    ? "W4 (22-28)"
+                    : "W5 (29-End)"}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {timeView === "MONTH" && (
+            <div className="flex items-center rounded-xl bg-[#090A0F] border border-[#1F2435] p-1">
+              <button
+                onClick={() => navigateMonth(-1)}
+                className="p-1.5 rounded-lg text-[#64748B] hover:text-white transition-colors cursor-pointer"
+                title="Previous Month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-3 font-bold text-white text-xs tracking-wider">
+                {selectedMonth}
+              </span>
+              <button
+                onClick={() => navigateMonth(1)}
+                className="p-1.5 rounded-lg text-[#64748B] hover:text-white transition-colors cursor-pointer"
+                title="Next Month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           <button
             onClick={handleOpenBudgetModal}
@@ -491,40 +607,48 @@ export default function FinancialIntelligencePage() {
           </div>
         </div>
 
-        {/* Category Breakdown Donut / List */}
+        {/* Dynamic Category Donut Chart */}
         <div className="hud-card p-6 rounded-2xl border border-[#1F2435] space-y-4">
-          <div className="pb-3 border-b border-[#1F2435]">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-purple-400" />
-              CATEGORY DISTRIBUTION
-            </h2>
-            <p className="text-[11px] text-[#94A3B8]">Share of actual capital deployed</p>
-          </div>
-
-          <div className="space-y-3 pt-1">
-            {analytics?.categoryDistribution && analytics.categoryDistribution.length > 0 ? (
-              analytics.categoryDistribution.map((cat) => (
-                <div key={cat.category} className="space-y-1">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-white font-bold">{formatCategoryLabel(cat.category)}</span>
-                    <span className="text-[#00F0FF] font-bold">
-                      ₹{cat.amount.toLocaleString("en-IN")}{" "}
-                      <span className="text-[#64748B] font-normal">({cat.percentage}%)</span>
-                    </span>
-                  </div>
-                  <div className="w-full h-1 rounded-full bg-[#1F2435] overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-[#00F0FF] to-purple-500"
-                      style={{ width: `${cat.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-8 text-center text-[#64748B]">No expenses recorded this month.</div>
+          <div className="pb-3 border-b border-[#1F2435] flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-purple-400" />
+                CATEGORY DISTRIBUTION
+              </h2>
+              <p className="text-[11px] text-[#94A3B8]">
+                {timeView === "DAY"
+                  ? `Day: ${selectedDate}`
+                  : timeView === "WEEK"
+                  ? `Week ${selectedWeek} of ${selectedMonth}`
+                  : `Full Month: ${selectedMonth}`}
+              </p>
+            </div>
+            {selectedChartCategory && (
+              <button
+                onClick={() => setSelectedChartCategory(null)}
+                className="text-[10px] text-[#00F0FF] hover:underline cursor-pointer"
+              >
+                Clear Slice
+              </button>
             )}
           </div>
+
+          <FinancialDonutChart
+            distribution={dynamicCategoryDistribution}
+            totalAmount={timeScopedTotalSpent}
+            selectedCategory={selectedChartCategory}
+            onSelectCategory={(cat) => setSelectedChartCategory(cat)}
+          />
         </div>
+      </div>
+
+      {/* Overspending Insights Directly Below Expenditure Velocity Graph */}
+      <div className="hud-card p-6 rounded-2xl border border-[#1F2435]">
+        <OverspendingInsightsPanel
+          categories={overview?.categories}
+          totalExpenses={overview?.totalExpenses || 0}
+          totalBudget={overview?.totalBudget || 0}
+        />
       </div>
 
       {/* 5. Monthly Financial Report & Automated Insights */}
@@ -562,18 +686,30 @@ export default function FinancialIntelligencePage() {
           <div>
             <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Receipt className="w-4 h-4 text-emerald-400" />
-              MONTHLY TRANSACTIONS LEDGER ({monthExpenses.length})
+              TRANSACTIONS LEDGER ({displayExpenses.length})
             </h2>
             <p className="text-[11px] text-[#94A3B8]">
-              Canonical audit records for {selectedMonth}
+              {timeView === "DAY"
+                ? `Showing expenditures for ${selectedDate}`
+                : timeView === "WEEK"
+                ? `Showing Week ${selectedWeek} records for ${selectedMonth}`
+                : `Canonical audit records for ${selectedMonth}`}
+              {effectiveCategoryFilter !== "ALL" && effectiveCategoryFilter && (
+                <span className="text-[#00F0FF] ml-1 font-bold">
+                  [{formatCategoryLabel(effectiveCategoryFilter)}]
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#090A0F] border border-[#1F2435]">
               <Filter className="w-3.5 h-3.5 text-[#64748B]" />
               <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                value={effectiveCategoryFilter || "ALL"}
+                onChange={(e) => {
+                  setSelectedChartCategory(null);
+                  setCategoryFilter(e.target.value);
+                }}
                 className="bg-transparent text-white text-xs focus:outline-none cursor-pointer"
               >
                 <option value="ALL" className="bg-[#090A0F] text-white">All Categories</option>
@@ -606,8 +742,8 @@ export default function FinancialIntelligencePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1F2435]/40 text-[#94A3B8]">
-              {monthExpenses.length > 0 ? (
-                monthExpenses.map((exp) => (
+              {displayExpenses.length > 0 ? (
+                displayExpenses.map((exp) => (
                   <tr key={exp._id.toString()} className="hover:bg-[#131620]/50 transition-colors">
                     <td className="py-2.5 px-3 font-bold text-white">{exp.targetDate}</td>
                     <td className="py-2.5 px-3">
@@ -633,7 +769,7 @@ export default function FinancialIntelligencePage() {
               ) : (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-[#64748B]">
-                    No expenses recorded in {selectedMonth}.
+                    No transactions matching the active time window and category filters.
                   </td>
                 </tr>
               )}

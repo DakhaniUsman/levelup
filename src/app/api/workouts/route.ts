@@ -5,6 +5,7 @@ import Workout from "@/models/Workout";
 import UserProfile from "@/models/UserProfile";
 import { ProtocolService } from "@/features/protocol/services/protocol.service";
 import { XPService } from "@/features/progression/services/xp.service";
+import { PRDetectionService } from "@/features/workouts/services/pr-detection.service";
 import { CacheService } from "@/lib/cache.service";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-response";
 import { z } from "zod";
@@ -68,6 +69,10 @@ export async function POST(req: NextRequest) {
     const validated = CreateWorkoutSchema.parse(body);
     const targetDate = validated.targetDate || ProtocolService.getTodayDateString(timezone);
 
+    // Automatic PR Detection
+    const { exercises: taggedExercises, newPRs } =
+      await PRDetectionService.detectAndTagPRs(session.userId, validated.exercises);
+
     const workout = await Workout.create({
       userId: session.userId,
       targetDate,
@@ -75,7 +80,7 @@ export async function POST(req: NextRequest) {
       title: validated.title,
       durationMinutes: validated.durationMinutes,
       intensityRating: validated.intensityRating,
-      exercises: validated.exercises,
+      exercises: taggedExercises,
       notes: validated.notes || "",
     });
 
@@ -93,10 +98,21 @@ export async function POST(req: NextRequest) {
       description: `Heavy Physical Training Cleared: ${validated.title} [${validated.split}] (+75 XP)`,
     });
 
+    // Award bonus XP for each new PR (+25 XP per PR set)
+    for (const pr of newPRs) {
+      await XPService.awardXP({
+        userId: session.userId,
+        amount: 25,
+        sourceType: "MANUAL_ADJUSTMENT",
+        sourceId: `PR:${workout._id}:${pr.exerciseName}:${pr.setNumber}`,
+        description: `Personal Record Shattered: ${pr.exerciseName} (${pr.prType === "WEIGHT_PR" ? `${pr.newValue}kg` : `${pr.newValue} reps`}) (+25 XP)`,
+      });
+    }
+
     // Invalidate fitness and dashboard caches
     await CacheService.invalidateFitness(session.userId);
 
-    return successResponse(workout, "Workout session logged & XP awarded", 201);
+    return successResponse({ workout, newPRs }, "Workout session logged & XP awarded", 201);
   } catch (error) {
     return handleApiError(error);
   }

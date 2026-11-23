@@ -63,6 +63,13 @@ export class ProtocolService {
           if (sub.asr) completedPoints++;
           if (sub.maghrib) completedPoints++;
           if (sub.isha) completedPoints++;
+        } else if (act.type === "STEPS_TRACKER") {
+          totalPoints += 1;
+          const steps = act.metadata?.stepsLogged || 0;
+          const target = act.metadata?.stepsTarget || 5000;
+          if (steps >= target || act.isCompleted) {
+            completedPoints++;
+          }
         } else {
           totalPoints += 1;
           if (act.isCompleted) completedPoints++;
@@ -440,6 +447,30 @@ export class ProtocolService {
             protocol.physically.gymWorkout = act.isCompleted;
           } else if (act.type === "FINANCIAL_AUDIT") {
             protocol.financially.auditCompleted = act.isCompleted;
+          }
+        } else if (updateData.stepsLogged !== undefined) {
+          if (!act.metadata) act.metadata = {};
+          const steps = Math.max(0, Number(updateData.stepsLogged) || 0);
+          act.metadata.stepsLogged = steps;
+          const target = act.metadata.stepsTarget || 5000;
+          act.metadata.stepsTarget = target;
+
+          const reached = steps >= target;
+          act.isCompleted = reached;
+          act.completedAt = reached ? new Date() : undefined;
+
+          if (!protocol.physically) protocol.physically = {} as any;
+          protocol.physically.stepsLogged = steps;
+          protocol.physically.stepsTarget = target;
+
+          if (reached) {
+            await XPService.awardXP({
+              userId: userObjId,
+              amount: 50,
+              sourceType: "MANUAL_ADJUSTMENT",
+              sourceId: `STEPS_5000:${protocol.targetDate}`,
+              description: `Physical Sphere: 5,000 Daily Steps Milestone Cleared (+50 XP)`,
+            });
           }
         }
       }

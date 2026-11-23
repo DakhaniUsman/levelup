@@ -15,7 +15,11 @@ export interface SessionPayload {
   expiresAt: Date;
 }
 
-export async function encryptSession(payload: SessionPayload): Promise<string> {
+export async function encryptSession(
+  payload: SessionPayload,
+  rememberMe: boolean = false
+): Promise<string> {
+  const expiry = rememberMe ? "30d" : "1d";
   return new SignJWT({
     userId: payload.userId,
     role: payload.role,
@@ -23,7 +27,7 @@ export async function encryptSession(payload: SessionPayload): Promise<string> {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(expiry)
     .sign(encodedKey);
 }
 
@@ -51,21 +55,29 @@ export async function decryptSession(
 export async function createSession(
   userId: string,
   role: UserRole,
-  username: string
+  username: string,
+  rememberMe: boolean = false
 ) {
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const token = await encryptSession({
-    userId,
-    role,
-    username,
-    expiresAt,
-  });
+  const durationMs = rememberMe
+    ? 30 * 24 * 60 * 60 * 1000
+    : 24 * 60 * 60 * 1000;
+  const expiresAt = new Date(Date.now() + durationMs);
+  const token = await encryptSession(
+    {
+      userId,
+      role,
+      username,
+      expiresAt,
+    },
+    rememberMe
+  );
 
   const cookieStore = await cookies();
   cookieStore.set("level_up_session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     expires: expiresAt,
+    maxAge: Math.floor(durationMs / 1000),
     sameSite: "lax",
     path: "/",
   });

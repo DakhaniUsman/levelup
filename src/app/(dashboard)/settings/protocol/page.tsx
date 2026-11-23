@@ -189,7 +189,7 @@ export default function ProtocolSettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto font-mono">
+    <div className="space-y-6 w-full font-mono">
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[#1F2435]">
         <div>
