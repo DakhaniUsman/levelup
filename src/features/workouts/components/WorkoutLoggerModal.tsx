@@ -14,7 +14,9 @@ import {
   Sparkles,
   Edit3,
 } from "lucide-react";
-import { IWorkout, WorkoutSplit } from "@/models/Workout";
+import { IWorkout, WorkoutSplit, PRType } from "@/models/Workout";
+import PRCelebrationModal from "./PRCelebrationModal";
+import { NewPRAchievement } from "../services/pr-detection.service";
 
 interface WorkoutLoggerModalProps {
   isOpen: boolean;
@@ -25,9 +27,10 @@ interface WorkoutLoggerModalProps {
 
 interface SetEntry {
   setNumber: number;
-  reps: number;
-  weightKg: number;
+  reps: number | string;
+  weightKg: number | string;
   isPersonalRecord: boolean;
+  prType?: PRType;
 }
 
 interface ExerciseEntry {
@@ -45,9 +48,11 @@ export default function WorkoutLoggerModal({
   const queryClient = useQueryClient();
   const [split, setSplit] = useState<WorkoutSplit>("PUSH");
   const [title, setTitle] = useState("Push Day: Progressive Overload");
-  const [durationMinutes, setDurationMinutes] = useState(60);
-  const [intensityRating, setIntensityRating] = useState(8);
+  const [durationMinutes, setDurationMinutes] = useState<number | string>(60);
+  const [intensityRating, setIntensityRating] = useState<number | string>(8);
   const [notes, setNotes] = useState("");
+  const [celebrationPRs, setCelebrationPRs] = useState<NewPRAchievement[]>([]);
+  const [isPRModalOpen, setIsPRModalOpen] = useState(false);
 
   const [exercises, setExercises] = useState<ExerciseEntry[]>([
     {
@@ -65,8 +70,8 @@ export default function WorkoutLoggerModal({
     if (workoutToEdit) {
       setSplit(workoutToEdit.split || "PUSH");
       setTitle(workoutToEdit.title || "");
-      setDurationMinutes(workoutToEdit.durationMinutes || 60);
-      setIntensityRating(workoutToEdit.intensityRating || 8);
+      setDurationMinutes(workoutToEdit.durationMinutes || "");
+      setIntensityRating(workoutToEdit.intensityRating || "");
       setNotes(workoutToEdit.notes || "");
       if (workoutToEdit.exercises && workoutToEdit.exercises.length > 0) {
         setExercises(
@@ -77,6 +82,7 @@ export default function WorkoutLoggerModal({
               reps: s.reps,
               weightKg: s.weightKg,
               isPersonalRecord: Boolean(s.isPersonalRecord),
+              prType: (s as any).prType || null,
             })),
             notes: e.notes || "",
           }))
@@ -84,19 +90,17 @@ export default function WorkoutLoggerModal({
       }
     } else {
       setSplit("PUSH");
-      setTitle("Push Day: Progressive Overload");
-      setDurationMinutes(60);
-      setIntensityRating(8);
+      setTitle("");
+      setDurationMinutes("");
+      setIntensityRating("");
       setNotes("");
       setExercises([
         {
-          exerciseName: "Barbell Bench Press",
+          exerciseName: "",
           sets: [
-            { setNumber: 1, reps: 10, weightKg: 60, isPersonalRecord: false },
-            { setNumber: 2, reps: 8, weightKg: 70, isPersonalRecord: false },
-            { setNumber: 3, reps: 6, weightKg: 75, isPersonalRecord: true },
+            { setNumber: 1, reps: "", weightKg: "", isPersonalRecord: false },
           ],
-          notes: "Focused on paused eccentric reps",
+          notes: "",
         },
       ]);
     }
@@ -108,7 +112,7 @@ export default function WorkoutLoggerModal({
       title: string;
       durationMinutes: number;
       intensityRating: number;
-      exercises: ExerciseEntry[];
+      exercises: any[];
       notes?: string;
     }) => {
       const url = workoutToEdit
@@ -125,7 +129,7 @@ export default function WorkoutLoggerModal({
       if (!res.ok) throw new Error(json.message || `Failed to ${workoutToEdit ? "update" : "log"} workout`);
       return json;
     },
-    onSuccess: () => {
+    onSuccess: (resData) => {
       queryClient.invalidateQueries({ queryKey: ["workouts"] });
       queryClient.invalidateQueries({ queryKey: ["daily-protocol"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
@@ -133,7 +137,13 @@ export default function WorkoutLoggerModal({
       queryClient.invalidateQueries({ queryKey: ["fitness-analytics"] });
       queryClient.invalidateQueries({ queryKey: ["fitness-progression"] });
       onSuccess?.();
-      onClose();
+
+      if (resData?.data?.newPRs && resData.data.newPRs.length > 0) {
+        setCelebrationPRs(resData.data.newPRs);
+        setIsPRModalOpen(true);
+      } else {
+        onClose();
+      }
     },
   });
 
@@ -144,7 +154,7 @@ export default function WorkoutLoggerModal({
       ...exercises,
       {
         exerciseName: "",
-        sets: [{ setNumber: 1, reps: 10, weightKg: 20, isPersonalRecord: false }],
+        sets: [{ setNumber: 1, reps: "", weightKg: "", isPersonalRecord: false }],
         notes: "",
       },
     ]);
@@ -159,8 +169,8 @@ export default function WorkoutLoggerModal({
     const lastSet = ex.sets[ex.sets.length - 1];
     const newSet: SetEntry = {
       setNumber: ex.sets.length + 1,
-      reps: lastSet ? lastSet.reps : 10,
-      weightKg: lastSet ? lastSet.weightKg : 20,
+      reps: lastSet && lastSet.reps !== "" ? lastSet.reps : "",
+      weightKg: lastSet && lastSet.weightKg !== "" ? lastSet.weightKg : "",
       isPersonalRecord: false,
     };
     const updated = [...exercises];
@@ -192,9 +202,19 @@ export default function WorkoutLoggerModal({
     workoutMutation.mutate({
       split,
       title: title.trim(),
-      durationMinutes,
-      intensityRating,
-      exercises,
+      durationMinutes: Number(durationMinutes) || 60,
+      intensityRating: Number(intensityRating) || 8,
+      exercises: exercises.map((ex) => ({
+        exerciseName: ex.exerciseName.trim(),
+        notes: ex.notes,
+        sets: ex.sets.map((s) => ({
+          setNumber: s.setNumber,
+          reps: Number(s.reps) || 0,
+          weightKg: Number(s.weightKg) || 0,
+          isPersonalRecord: s.isPersonalRecord,
+          prType: s.prType || null,
+        })),
+      })),
       notes,
     });
   };
@@ -262,11 +282,16 @@ export default function WorkoutLoggerModal({
                 <Clock className="w-3.5 h-3.5 text-[#64748B] absolute left-2.5 top-2.5" />
                 <input
                   type="number"
-                  min={10}
-                  max={240}
+                  min={0}
+                  placeholder="0"
+                  onWheel={(e) => e.currentTarget.blur()}
                   value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10))}
-                  className="w-full pl-8 pr-2 py-1.5 rounded-lg bg-[#0B0D13] border border-[#1F2435] text-xs text-white"
+                  onChange={(e) =>
+                    setDurationMinutes(
+                      e.target.value === "" ? "" : parseInt(e.target.value, 10)
+                    )
+                  }
+                  className="w-full pl-8 pr-2 py-1.5 rounded-lg bg-[#0B0D13] border border-[#1F2435] text-xs text-white placeholder-[#475569]"
                 />
               </div>
             </div>
@@ -279,11 +304,16 @@ export default function WorkoutLoggerModal({
                 <Flame className="w-3.5 h-3.5 text-rose-500 absolute left-2.5 top-2.5" />
                 <input
                   type="number"
-                  min={1}
-                  max={10}
+                  min={0}
+                  placeholder="0"
+                  onWheel={(e) => e.currentTarget.blur()}
                   value={intensityRating}
-                  onChange={(e) => setIntensityRating(parseInt(e.target.value, 10))}
-                  className="w-full pl-8 pr-2 py-1.5 rounded-lg bg-[#0B0D13] border border-[#1F2435] text-xs text-white"
+                  onChange={(e) =>
+                    setIntensityRating(
+                      e.target.value === "" ? "" : parseInt(e.target.value, 10)
+                    )
+                  }
+                  className="w-full pl-8 pr-2 py-1.5 rounded-lg bg-[#0B0D13] border border-[#1F2435] text-xs text-white placeholder-[#475569]"
                 />
               </div>
             </div>
@@ -370,49 +400,48 @@ export default function WorkoutLoggerModal({
                         type="number"
                         min={0}
                         step={0.5}
+                        placeholder="0"
+                        onWheel={(e) => e.currentTarget.blur()}
                         value={set.weightKg}
                         onChange={(e) =>
                           handleSetChange(
                             exIdx,
                             setIdx,
                             "weightKg",
-                            parseFloat(e.target.value) || 0
+                            e.target.value === "" ? "" : parseFloat(e.target.value)
                           )
                         }
-                        className="col-span-3 px-2 py-1 bg-[#050608] border border-[#1F2435] rounded text-xs text-white"
+                        className="col-span-3 px-2 py-1 bg-[#050608] border border-[#1F2435] rounded text-xs text-white placeholder-[#475569]"
                       />
                       <input
                         type="number"
-                        min={1}
+                        min={0}
+                        placeholder="0"
+                        onWheel={(e) => e.currentTarget.blur()}
                         value={set.reps}
                         onChange={(e) =>
                           handleSetChange(
                             exIdx,
                             setIdx,
                             "reps",
-                            parseInt(e.target.value, 10) || 1
+                            e.target.value === "" ? "" : parseInt(e.target.value, 10)
                           )
                         }
-                        className="col-span-3 px-2 py-1 bg-[#050608] border border-[#1F2435] rounded text-xs text-white"
+                        className="col-span-3 px-2 py-1 bg-[#050608] border border-[#1F2435] rounded text-xs text-white placeholder-[#475569]"
                       />
-                      <label className="col-span-3 flex items-center gap-1.5 text-[10px] text-[#CBD5E1] cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={set.isPersonalRecord}
-                          onChange={(e) =>
-                            handleSetChange(
-                              exIdx,
-                              setIdx,
-                              "isPersonalRecord",
-                              e.target.checked
-                            )
-                          }
-                          className="rounded border-[#1F2435] text-amber-500 focus:ring-0"
-                        />
-                        <span className="text-amber-400 font-bold flex items-center gap-0.5">
-                          <Award className="w-3 h-3" /> PR
-                        </span>
-                      </label>
+                      <div className="col-span-3 flex items-center">
+                        {set.isPersonalRecord ? (
+                          <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/40 text-amber-400 font-bold text-[10px] flex items-center gap-1 shadow-[0_0_8px_rgba(245,158,11,0.25)]">
+                            <Award className="w-3 h-3" />
+                            <span>{set.prType === "REPS_PR" ? "Reps PR" : "Weight PR"}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-[#64748B] flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#334155]" />
+                            <span>Auto PR</span>
+                          </span>
+                        )}
+                      </div>
                       <div className="col-span-1 text-right">
                         {ex.sets.length > 1 && (
                           <button
@@ -481,6 +510,16 @@ export default function WorkoutLoggerModal({
           </div>
         </form>
       </div>
+
+      {/* PR Celebration Modal */}
+      <PRCelebrationModal
+        isOpen={isPRModalOpen}
+        onClose={() => {
+          setIsPRModalOpen(false);
+          onClose();
+        }}
+        prs={celebrationPRs}
+      />
     </div>
   );
 }

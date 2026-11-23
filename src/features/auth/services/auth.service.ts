@@ -108,7 +108,12 @@ export class AuthService {
     }
 
     // Issue session
-    await createSession(user._id.toString(), user.role, user.username);
+    await createSession(
+      user._id.toString(),
+      user.role,
+      user.username,
+      Boolean(input.rememberMe)
+    );
 
     return {
       id: user._id.toString(),

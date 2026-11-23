@@ -37,21 +37,23 @@ export default function HunterHeader() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: user } = useQuery<SafeUser>({
+  const { data: user } = useQuery<SafeUser | null>({
     queryKey: ["current-user"],
     queryFn: async () => {
       const res = await fetch("/api/auth/me");
+      if (!res.ok) return null;
       const json = await res.json();
-      return json.data;
+      return json.data ?? null;
     },
   });
 
-  const { data: stats } = useQuery<ProgressionStats>({
+  const { data: stats } = useQuery<ProgressionStats | null>({
     queryKey: ["progression-stats"],
     queryFn: async () => {
       const res = await fetch("/api/progression/stats");
+      if (!res.ok) return null;
       const json = await res.json();
-      return json.data;
+      return json.data ?? null;
     },
     refetchInterval: 15000,
   });
@@ -63,6 +65,7 @@ export default function HunterHeader() {
     queryKey: ["notifications"],
     queryFn: async () => {
       const res = await fetch("/api/notifications");
+      if (!res.ok) return { notifications: [], unreadCount: 0 };
       const json = await res.json();
       return json.data || { notifications: [], unreadCount: 0 };
     },

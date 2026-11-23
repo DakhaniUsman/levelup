@@ -4,6 +4,7 @@ import dbConnect from "@/lib/db";
 import Expense from "@/models/Expense";
 import UserProfile from "@/models/UserProfile";
 import { ProtocolService } from "@/features/protocol/services/protocol.service";
+import { CacheService } from "@/lib/cache.service";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-response";
 import { z } from "zod";
 
@@ -71,6 +72,9 @@ export async function POST(req: NextRequest) {
 
     // Refresh protocol financial sphere
     await ProtocolService.getOrCreateTodayProtocol(session.userId, timezone);
+
+    // Invalidate finance and dashboard caches
+    await CacheService.invalidateFinance(session.userId);
 
     return successResponse(expense, "Expense logged successfully", 201);
   } catch (error) {

@@ -100,6 +100,13 @@ export const DEFAULT_INITIAL_ITEMS: Array<{
     type: "CHECKBOX",
     order: 5,
   },
+  {
+    sphere: "PHYSICAL",
+    title: "Daily Steps Target (5,000 steps)",
+    description: "Daily physical cardiovascular activity: 5,000 steps",
+    type: "STEPS_TRACKER",
+    order: 6,
+  },
 
   // 4. Emotional
   {

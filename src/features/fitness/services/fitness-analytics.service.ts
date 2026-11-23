@@ -7,6 +7,7 @@ import {
   getExerciseMetadata,
   EXERCISE_DEFINITIONS,
 } from "../constants/exercises";
+import { CacheService } from "@/lib/cache.service";
 
 export interface ExerciseSessionRecord {
   workoutId: string;
@@ -81,12 +82,15 @@ export class FitnessAnalyticsService {
    * Retrieves high-level workout and PPL analytics for the user
    */
   static async getOverviewAnalytics(userId: string | Types.ObjectId): Promise<FitnessOverviewStats> {
-    await dbConnect();
     const userObjId = typeof userId === "string" ? new Types.ObjectId(userId) : userId;
+    const cacheKey = CacheService.keys.fitnessOverview(userObjId.toString());
 
-    const allWorkouts = await Workout.find({ userId: userObjId })
-      .sort({ targetDate: -1, createdAt: -1 })
-      .lean();
+    return CacheService.getOrSet(cacheKey, async () => {
+      await dbConnect();
+
+      const allWorkouts = await Workout.find({ userId: userObjId })
+        .sort({ targetDate: -1, createdAt: -1 })
+        .lean();
 
     const now = new Date();
     const currentMonthPrefix = now.toISOString().slice(0, 7); // "YYYY-MM"
@@ -194,7 +198,8 @@ export class FitnessAnalyticsService {
       pplBreakdown,
       muscleGroupFrequencyWeekly,
     };
-  }
+  }, 600);
+}
 
   /**
    * Computes progression tracking for a specific exercise across historical sessions

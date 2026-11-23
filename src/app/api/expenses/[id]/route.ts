@@ -4,6 +4,7 @@ import dbConnect from "@/lib/db";
 import Expense from "@/models/Expense";
 import UserProfile from "@/models/UserProfile";
 import { ProtocolService } from "@/features/protocol/services/protocol.service";
+import { CacheService } from "@/lib/cache.service";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-response";
 import { z } from "zod";
 
@@ -48,6 +49,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     // Recalculate protocol totals and sync across modules
     await ProtocolService.syncExpenseAudit(session.userId, timezone);
 
+    // Invalidate finance and dashboard caches
+    await CacheService.invalidateFinance(session.userId);
+
     return successResponse(expense, "Expense updated and synchronized successfully");
   } catch (error) {
     return handleApiError(error);
@@ -78,6 +82,9 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
 
     // Recalculate protocol totals and sync across modules
     await ProtocolService.syncExpenseAudit(session.userId, timezone);
+
+    // Invalidate finance and dashboard caches
+    await CacheService.invalidateFinance(session.userId);
 
     return successResponse({ deletedId: id }, "Expense deleted and synchronized successfully");
   } catch (error) {

@@ -25,6 +25,8 @@ export interface IPhysicalSphere {
   healthyLunch: boolean;
   gymWorkout: boolean; // 7:30-8:00pm with progressive overload
   sleepTarget: boolean; // 7-9h, in bed by 11pm
+  stepsLogged?: number;
+  stepsTarget?: number;
 }
 
 export interface IEmotionalSphere {
@@ -67,6 +69,8 @@ export interface IDailyActivityRecord {
   metadata?: {
     totalSpentToday?: number;
     workoutId?: string;
+    stepsLogged?: number;
+    stepsTarget?: number;
   };
 }
 
@@ -99,7 +103,7 @@ const DailyActivityRecordSchema = new Schema<IDailyActivityRecord>(
     },
     type: {
       type: String,
-      enum: ["CHECKBOX", "PRAYER_TRACKER", "WORKOUT_LOG", "FINANCIAL_AUDIT"],
+      enum: ["CHECKBOX", "PRAYER_TRACKER", "WORKOUT_LOG", "FINANCIAL_AUDIT", "STEPS_TRACKER"],
       default: "CHECKBOX",
     },
     title: { type: String, required: true },
@@ -117,6 +121,8 @@ const DailyActivityRecordSchema = new Schema<IDailyActivityRecord>(
     metadata: {
       totalSpentToday: { type: Number, default: 0 },
       workoutId: { type: String, default: "" },
+      stepsLogged: { type: Number, default: 0 },
+      stepsTarget: { type: Number, default: 5000 },
     },
   },
   { _id: false }

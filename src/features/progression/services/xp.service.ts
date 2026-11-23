@@ -10,6 +10,7 @@ import {
   LevelCalculation,
 } from "../constants/ranks";
 import { AccountabilityService } from "@/features/notifications/services/accountability.service";
+import { CacheService } from "@/lib/cache.service";
 
 export interface AwardXPParams {
   userId: string | Types.ObjectId;
@@ -98,6 +99,9 @@ export class XPService {
         }).catch((e: any) => console.error("Rank up alert error:", e.message));
       }
 
+      // Invalidate progression and dashboard cache
+      await CacheService.invalidateProgression(userObjId.toString());
+
       return { transaction, isNewReward: true };
     } catch (error: unknown) {
       // In case of race condition on unique index
@@ -120,53 +124,56 @@ export class XPService {
   static async getProgressionStats(
     userId: string | Types.ObjectId
   ): Promise<ProgressionStats> {
-    await dbConnect();
-
     const userObjId =
       typeof userId === "string" ? new Types.ObjectId(userId) : userId;
+    const cacheKey = CacheService.keys.progression(userObjId.toString());
 
-    // Aggregate lifetime XP
-    const lifetimeAggregate = await XPTransaction.aggregate([
-      { $match: { userId: userObjId } },
-      {
-        $group: {
-          _id: null,
-          totalXP: { $sum: "$amount" },
-          count: { $sum: 1 },
+    return CacheService.getOrSet(cacheKey, async () => {
+      await dbConnect();
+
+      // Aggregate lifetime XP
+      const lifetimeAggregate = await XPTransaction.aggregate([
+        { $match: { userId: userObjId } },
+        {
+          $group: {
+            _id: null,
+            totalXP: { $sum: "$amount" },
+            count: { $sum: 1 },
+          },
         },
-      },
-    ]);
+      ]);
 
-    const totalXP = lifetimeAggregate[0]?.totalXP || 0;
-    const totalTransactions = lifetimeAggregate[0]?.count || 0;
+      const totalXP = lifetimeAggregate[0]?.totalXP || 0;
+      const totalTransactions = lifetimeAggregate[0]?.count || 0;
 
-    // Calculate today's XP (UTC midnight start of current day)
-    const startOfToday = new Date();
-    startOfToday.setUTCHours(0, 0, 0, 0);
+      // Calculate today's XP (UTC midnight start of current day)
+      const startOfToday = new Date();
+      startOfToday.setUTCHours(0, 0, 0, 0);
 
-    const todayAggregate = await XPTransaction.aggregate([
-      {
-        $match: {
-          userId: userObjId,
-          createdAt: { $gte: startOfToday },
+      const todayAggregate = await XPTransaction.aggregate([
+        {
+          $match: {
+            userId: userObjId,
+            createdAt: { $gte: startOfToday },
+          },
         },
-      },
-      {
-        $group: {
-          _id: null,
-          todayXP: { $sum: "$amount" },
+        {
+          $group: {
+            _id: null,
+            todayXP: { $sum: "$amount" },
+          },
         },
-      },
-    ]);
+      ]);
 
-    const todayXP = todayAggregate[0]?.todayXP || 0;
-    const progression = calculateProgression(totalXP);
+      const todayXP = todayAggregate[0]?.todayXP || 0;
+      const progression = calculateProgression(totalXP);
 
-    return {
-      ...progression,
-      todayXP,
-      totalTransactions,
-    };
+      return {
+        ...progression,
+        todayXP,
+        totalTransactions,
+      };
+    }, 300);
   }
 
   /**

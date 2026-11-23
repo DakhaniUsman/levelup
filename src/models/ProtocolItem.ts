@@ -11,7 +11,8 @@ export type ProtocolItemType =
   | "CHECKBOX"
   | "PRAYER_TRACKER"
   | "WORKOUT_LOG"
-  | "FINANCIAL_AUDIT";
+  | "FINANCIAL_AUDIT"
+  | "STEPS_TRACKER";
 
 export interface IProtocolItem extends Document {
   userId: Types.ObjectId;
@@ -54,7 +55,7 @@ const ProtocolItemSchema = new Schema<IProtocolItem>(
     },
     type: {
       type: String,
-      enum: ["CHECKBOX", "PRAYER_TRACKER", "WORKOUT_LOG", "FINANCIAL_AUDIT"],
+      enum: ["CHECKBOX", "PRAYER_TRACKER", "WORKOUT_LOG", "FINANCIAL_AUDIT", "STEPS_TRACKER"],
       default: "CHECKBOX",
     },
     order: {

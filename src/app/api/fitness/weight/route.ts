@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { BodyWeightService } from "@/features/fitness/services/body-weight.service";
 import { ProtocolService } from "@/features/protocol/services/protocol.service";
 import UserProfile from "@/models/UserProfile";
+import { CacheService } from "@/lib/cache.service";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-response";
 
 const LogWeightSchema = z.object({
@@ -20,9 +21,10 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get("limit") || "60", 10);
+    const range = searchParams.get("range") || "ALL";
+    const limit = parseInt(searchParams.get("limit") || "365", 10);
 
-    const stats = await BodyWeightService.getWeightStats(session.userId, limit);
+    const stats = await BodyWeightService.getWeightStats(session.userId, range, limit);
     return successResponse(stats, "Weight transformation history retrieved successfully");
   } catch (error) {
     return handleApiError(error);
@@ -49,6 +51,9 @@ export async function POST(req: NextRequest) {
       validated.weightKg,
       validated.notes || ""
     );
+
+    // Invalidate fitness and dashboard caches
+    await CacheService.invalidateFitness(session.userId);
 
     return successResponse(entry, "Weight measurement recorded successfully", 201);
   } catch (error) {

@@ -1,6 +1,7 @@
 import HunterSidebar from "@/components/layout/HunterSidebar";
 import HunterHeader from "@/components/layout/HunterHeader";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
+import HUDNotificationToast from "@/features/notifications/components/HUDNotificationToast";
 
 export default function DashboardLayout({
   children,
@@ -17,6 +18,7 @@ export default function DashboardLayout({
         </main>
         <MobileBottomNav />
       </div>
+      <HUDNotificationToast />
     </div>
   );
 }

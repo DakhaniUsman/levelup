@@ -244,7 +244,7 @@ export class AccountabilityService {
           type: "SYSTEM",
         });
         if (res.dispatched) alertsSent.push("protocol_afternoon");
-      } else if (localHour >= 18 && localHour < 21) {
+      } else if (localHour >= 18 && localHour < 20) {
         const remaining = (protocol.activities || []).filter((a) => !a.isCompleted).length;
         const res = await this.dispatchAlert({
           userId: userObjId,
@@ -256,17 +256,38 @@ export class AccountabilityService {
           type: "SYSTEM",
         });
         if (res.dispatched) alertsSent.push("protocol_evening");
+      } else if (localHour >= 20 && localHour < 21) {
+        // 8:00 PM Accountability Check:
+        // If completion < 70%, trigger warning indicating percentage remaining.
+        // If >= 70%, suppress warning completely.
+        if (completionPercent < 70) {
+          const needed = 70 - completionPercent;
+          const res = await this.dispatchAlert({
+            userId: userObjId,
+            dedupeKey: `protocol_warning_8pm_${todayStr}`,
+            category: "protocol",
+            title: "HUNTER PROTOCOL WARNING: BELOW 70%",
+            message: `Current completion is ${completionPercent}%. You need ${needed}% more before midnight to reach the System's 70% threshold and avoid disciplinary penalties.`,
+            url: "/dashboard",
+            type: "SYSTEM",
+            bypassQuietHours: true,
+          });
+          if (res.dispatched) alertsSent.push("protocol_warning_8pm");
+        }
       } else if (localHour >= 21) {
-        const res = await this.dispatchAlert({
-          userId: userObjId,
-          dedupeKey: `protocol_night_${todayStr}`,
-          category: "protocol",
-          title: "SYSTEM ALERT: PROTOCOL DEADLINE",
-          message: `Final hours of the day. Complete your mandatory spheres to prevent penalty zone activation.`,
-          url: "/dashboard",
-          type: "SYSTEM",
-        });
-        if (res.dispatched) alertsSent.push("protocol_night");
+        if (completionPercent < 70) {
+          const needed = 70 - completionPercent;
+          const res = await this.dispatchAlert({
+            userId: userObjId,
+            dedupeKey: `protocol_night_${todayStr}`,
+            category: "protocol",
+            title: "CRITICAL ALERT: PROTOCOL DEADLINE",
+            message: `Final hours remaining. Daily Protocol is at ${completionPercent}%. Need ${needed}% more to reach the 70% safe zone before midnight.`,
+            url: "/dashboard",
+            type: "SYSTEM",
+          });
+          if (res.dispatched) alertsSent.push("protocol_night");
+        }
       }
     }
 
@@ -365,6 +386,21 @@ export class AccountabilityService {
         type: "SYSTEM",
       });
       if (res.dispatched) alertsSent.push("daily_report");
+    }
+
+    // 7. Midnight (12:00 AM) Day Closure Evaluation
+    if (localHour === 0) {
+      // Safely evaluate day transition without breaking streaks
+      const res = await this.dispatchAlert({
+        userId: userObjId,
+        dedupeKey: `midnight_day_cycle_${todayStr}`,
+        category: "dailyReport",
+        title: "SYSTEM DIRECTIVE: NEW CYCLE AWAKENED",
+        message: `Midnight reached. A new cycle begins. Yesterday's records are sealed; rise and conquer today.`,
+        url: "/dashboard",
+        type: "SYSTEM",
+      });
+      if (res.dispatched) alertsSent.push("midnight_day_cycle");
     }
 
     return { evaluated: true, alertsSent };

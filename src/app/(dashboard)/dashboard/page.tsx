@@ -117,8 +117,9 @@ export default function DashboardPage() {
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const res = await fetch("/api/dashboard/stats");
+      if (!res.ok) return null;
       const json = await res.json();
-      return json.data;
+      return json.data ?? null;
     },
     refetchInterval: 15000,
   });
@@ -127,8 +128,9 @@ export default function DashboardPage() {
     queryKey: ["daily-protocol"],
     queryFn: async () => {
       const res = await fetch("/api/protocol");
+      if (!res.ok) return null;
       const json = await res.json();
-      return json.data;
+      return json.data ?? null;
     },
     refetchInterval: 15000,
   });

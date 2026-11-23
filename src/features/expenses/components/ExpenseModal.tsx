@@ -39,8 +39,9 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }: ExpenseModa
     queryKey: ["expenses-today"],
     queryFn: async () => {
       const res = await fetch("/api/expenses");
+      if (!res.ok) return { expenses: [], totalSpent: 0, targetDate: "" };
       const json = await res.json();
-      return json.data;
+      return json.data || { expenses: [], totalSpent: 0, targetDate: "" };
     },
     enabled: isOpen,
   });

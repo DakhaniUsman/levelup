@@ -182,6 +182,16 @@ The following files represent the verified Phase 3 Fitness Domain, 5-Sphere Livi
   - Created scheduled cron endpoint `/api/cron/reminders` with `CRON_SECRET` authorization.
   - Enhanced Hunter HUD avatar box with electric cyan neon glow and dynamic Hunter Rank aura scaling.
 
+### [v3.4.0] — 2026-11-23
+- Implemented Hybrid Redis & In-Memory High-Speed Caching Architecture (`ioredis` + resilient in-memory LRU fallback):
+  - Created `src/lib/redis.ts` with connection resilience, lazy loading, and failure safety.
+  - Created `src/lib/cache.service.ts` with Cache-Aside pattern (`CacheService.getOrSet`), user-namespaced keys, and pattern-based invalidations.
+  - Accelerated Dashboard (`/api/dashboard/stats`), Financial Intelligence (`/api/finance/*`), Fitness Analytics (`/api/fitness/*`), and Progression Engine (`/api/progression/stats`).
+  - Implemented event-driven cache invalidation hooks on expense, workout, weight, task, and protocol mutations so cached data is never stale.
+  - Documented optional `REDIS_URL` in `.env.example` with zero-config in-memory fallback when Redis is absent.
+  - Cleaned duplicate dependencies and scripts in `package.json`, cutting production static page generation time to 622ms.
+  - Verified 0 TypeScript errors and full production build passing cleanly.
+
 ### [v3.3.1] — 2026-11-19
 - Enhanced Financial Intelligence with Expense Categories Expansion:
   - Added Rent (`RENT`), Electricity Bill (EB) (`ELECTRICITY_BILL`), and Home Support (`HOME_SUPPORT`).

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
 import { TaskService } from "@/features/tasks/services/task.service";
 import { UpdateTaskSchema } from "@/features/tasks/schemas/task.schema";
+import { CacheService } from "@/lib/cache.service";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-response";
 
 interface RouteParams {
@@ -20,6 +21,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const validatedData = UpdateTaskSchema.parse(json);
 
     const result = await TaskService.updateTask(id, session.userId, validatedData);
+    await CacheService.del(CacheService.keys.dashboard(session.userId));
     return successResponse(result, "Task updated successfully");
   } catch (error) {
     return handleApiError(error);
@@ -39,6 +41,8 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
     if (!deleted) {
       return errorResponse("Task not found or already deleted", "NOT_FOUND", 404);
     }
+
+    await CacheService.del(CacheService.keys.dashboard(session.userId));
 
     return successResponse({ deleted: true }, "Task deleted successfully");
   } catch (error) {

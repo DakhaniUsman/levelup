@@ -13,12 +13,13 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState("UTC");
   const [successMsg, setSuccessMsg] = useState(false);
 
-  const { data: user, isLoading } = useQuery<SafeUser>({
+  const { data: user, isLoading } = useQuery<SafeUser | null>({
     queryKey: ["current-user"],
     queryFn: async () => {
       const res = await fetch("/api/auth/me");
+      if (!res.ok) return null;
       const json = await res.json();
-      return json.data;
+      return json.data ?? null;
     },
   });
 
@@ -65,7 +66,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-8">
+    <div className="w-full space-y-8">
       {/* Header */}
       <div className="pb-4 border-b border-[#1F2435]">
         <h1 className="text-2xl font-bold font-mono tracking-tight text-white flex items-center gap-2.5">
@@ -84,51 +85,54 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Daily Protocol Configuration Card */}
-      <div className="hud-card p-6 sm:p-7 rounded-2xl border border-[#00F0FF]/30 shadow-[0_0_20px_rgba(0,240,255,0.06)] font-mono space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
+      {/* Configuration Quick Navigation Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Daily Protocol Configuration Card */}
+        <div className="hud-card p-6 sm:p-7 rounded-2xl border border-[#00F0FF]/30 shadow-[0_0_20px_rgba(0,240,255,0.06)] font-mono space-y-4 flex flex-col justify-between">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Sliders className="w-5 h-5 text-[#00F0FF]" />
               <h2 className="text-base font-bold text-white uppercase tracking-wider">
                 DAILY PROTOCOL CONFIGURATION
               </h2>
             </div>
-            <p className="text-xs text-[#94A3B8]">
-              Customize, add, reorder, or disable activities across your 5 Living Spheres
+            <p className="text-xs text-[#94A3B8] leading-relaxed">
+              Customize, add, reorder, or disable activities across your 5 Living Spheres (Spirituality, Mental, Physical, Emotional, Financial).
             </p>
           </div>
-          <Link
-            href="/settings/protocol"
-            className="px-4 py-2.5 rounded-xl bg-[#00F0FF]/15 border border-[#00F0FF]/40 text-[#00F0FF] hover:bg-[#00F0FF]/25 font-bold text-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-[0_0_12px_rgba(0,240,255,0.2)]"
-          >
-            <span>Configure 5 Spheres</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          <div className="pt-2">
+            <Link
+              href="/settings/protocol"
+              className="w-full px-4 py-2.5 rounded-xl bg-[#00F0FF]/15 border border-[#00F0FF]/40 text-[#00F0FF] hover:bg-[#00F0FF]/25 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(0,240,255,0.2)]"
+            >
+              <span>Configure 5 Spheres</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
-      </div>
 
-      {/* System Alerts & Push Telemetry Card */}
-      <div className="hud-card p-6 sm:p-7 rounded-2xl border border-[#8A2BE2]/30 shadow-[0_0_20px_rgba(138,43,226,0.06)] font-mono space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
+        {/* System Alerts & Push Telemetry Card */}
+        <div className="hud-card p-6 sm:p-7 rounded-2xl border border-[#8A2BE2]/30 shadow-[0_0_20px_rgba(138,43,226,0.06)] font-mono space-y-4 flex flex-col justify-between">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-[#8A2BE2]" />
               <h2 className="text-base font-bold text-white uppercase tracking-wider">
-                SYSTEM ALERTS & MOBILE PUSH
+                SYSTEM ALERTS &amp; MOBILE PUSH
               </h2>
             </div>
-            <p className="text-xs text-[#94A3B8]">
-              Configure mobile lock-screen alerts, quiet hours, and daily accountability reminders
+            <p className="text-xs text-[#94A3B8] leading-relaxed">
+              Configure lock-screen alerts, quiet hours, and the 8:00 PM 70% threshold accountability reminders.
             </p>
           </div>
-          <Link
-            href="/settings/notifications"
-            className="px-4 py-2.5 rounded-xl bg-[#8A2BE2]/15 border border-[#8A2BE2]/40 text-purple-200 hover:bg-[#8A2BE2]/25 font-bold text-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-[0_0_12px_rgba(138,43,226,0.2)]"
-          >
-            <span>Manage Alerts</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          <div className="pt-2">
+            <Link
+              href="/settings/notifications"
+              className="w-full px-4 py-2.5 rounded-xl bg-[#8A2BE2]/15 border border-[#8A2BE2]/40 text-purple-200 hover:bg-[#8A2BE2]/25 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(138,43,226,0.2)]"
+            >
+              <span>Manage System Alerts</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </div>
 

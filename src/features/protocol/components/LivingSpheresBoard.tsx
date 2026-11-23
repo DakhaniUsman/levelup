@@ -63,6 +63,11 @@ export default function LivingSpheresBoard({
     updateMutation.mutate({ itemId, subKey, subValue: !currentVal });
   };
 
+  const handleUpdateSteps = (itemId: string, currentSteps: number, delta: number) => {
+    const updated = Math.max(0, currentSteps + delta);
+    updateMutation.mutate({ itemId, stepsLogged: updated });
+  };
+
   const getSphereActivities = (sphereName: string): IDailyActivityRecord[] => {
     return activities
       .filter((a) => a.sphere === sphereName)
@@ -318,6 +323,57 @@ export default function LivingSpheresBoard({
             ) : (
               physicalActs.map((act) => {
                 const isGym = act.type === "WORKOUT_LOG" || act.title.includes("Gym");
+
+                if (act.type === "STEPS_TRACKER" || act.title.includes("Steps")) {
+                  const currentSteps = act.metadata?.stepsLogged || 0;
+                  const targetSteps = act.metadata?.stepsTarget || 5000;
+                  const percent = Math.min(100, Math.round((currentSteps / targetSteps) * 100));
+
+                  return (
+                    <div
+                      key={act.itemId.toString()}
+                      className="p-2.5 rounded-lg bg-[#090A0F] border border-[#1F2435] space-y-2"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <div>
+                          <div className="font-medium text-white flex items-center gap-1.5">
+                            <span>{act.title}</span>
+                            {act.isCompleted && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            )}
+                          </div>
+                          <div className="text-[10px] text-[#64748B]">
+                            {currentSteps.toLocaleString()} / {targetSteps.toLocaleString()} steps ({percent}%)
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateSteps(act.itemId.toString(), currentSteps, 1000)}
+                            className="px-2 py-0.5 text-[10px] rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition-all cursor-pointer font-bold"
+                          >
+                            +1k
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateSteps(act.itemId.toString(), currentSteps, 2500)}
+                            className="px-2 py-0.5 text-[10px] rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition-all cursor-pointer font-bold"
+                          >
+                            +2.5k
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="h-1.5 w-full bg-[#131620] rounded-full overflow-hidden border border-[#1F2435]">
+                        <div
+                          className="h-full bg-gradient-to-r from-rose-500 to-amber-400 transition-all duration-300"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <label
