@@ -147,3 +147,34 @@ POST / PATCH /api/expenses
 - **Electricity Bill (EB)**: Default planned budget allocation initialized to ₹500 for new monthly budgets. Non-destructively added to existing budgets if not present. Actual payments recorded manually via Log Expense, reducing remaining EB budget and triggering overspending warnings when exceeding ₹500.
 - **Rent & Home Support**: Configurable monthly budget categories. Home support represents money sent home/family assistance and is tracked as an actual expense in all financial analytics.
 - **Dynamic Category Preservation**: Fully backward compatible with legacy and custom hunter categories. Custom categories present in transactions dynamically appear in modals and filters without schema friction.
+
+## 8. Hybrid Redis & In-Memory High-Speed Caching Architecture
+
+### 8.1 The Cache-Aside Design
+To eliminate high latency from repetitive MongoDB Atlas cloud roundtrips, Level Up employs a dual-tier Cache-Aside architecture:
+1. **Tier 1 (Distributed Redis via `ioredis`)**: When `REDIS_URL` is configured, all computationally intensive payloads are cached in Redis with strict TTLs (Time-To-Live).
+2. **Tier 2 (High-Speed In-Memory Fallback)**: If `REDIS_URL` is absent or the Redis instance is temporarily unreachable, the system automatically falls back to an in-memory Map cache with millisecond TTL evaluation. The application never crashes or throws 500 errors due to cache infrastructure.
+
+```text
+Incoming Request (e.g. GET /api/dashboard/stats)
+                     │
+                     ▼
+             CacheService.get(key)
+                     │
+         ┌───────────┴───────────┐
+         ▼                       ▼
+    [Cache HIT]             [Cache MISS]
+    Return ~1-2ms                │
+                            Execute MongoDB Query
+                                 │
+                            CacheService.set(key, data, TTL)
+                                 │
+                            Return Fresh Data
+```
+
+### 8.2 Granular Cache Taxonomy & Invalidation Pipeline
+- **Dashboard (`user:{id}:dashboard`)**: TTL 300s. Invalidated on any expense, workout, task, or protocol mutation.
+- **Finance (`user:{id}:finance:*`)**: TTL 600s. Overview, analytics, and executive reports. Invalidated on any expense add/edit/delete or budget change.
+- **Fitness (`user:{id}:fitness:*`)**: TTL 600s. PPL breakdown, volume, and PR analytics. Invalidated on workout or weight mutation.
+- **Progression (`user:{id}:progression`)**: TTL 300s. Lifetime and daily XP statistics. Invalidated on XP rewards or penalty judgements.
+- **Daily Protocol (`user:{id}:protocol:{date}`)**: TTL 300s. Living Spheres snapshots. Invalidated on activity completion.

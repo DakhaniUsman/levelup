@@ -5,6 +5,7 @@ import Workout from "@/models/Workout";
 import UserProfile from "@/models/UserProfile";
 import { ProtocolService } from "@/features/protocol/services/protocol.service";
 import { XPService } from "@/features/progression/services/xp.service";
+import { CacheService } from "@/lib/cache.service";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-response";
 import { z } from "zod";
 
@@ -91,6 +92,9 @@ export async function POST(req: NextRequest) {
       sourceId: `WORKOUT:${workout._id}`,
       description: `Heavy Physical Training Cleared: ${validated.title} [${validated.split}] (+75 XP)`,
     });
+
+    // Invalidate fitness and dashboard caches
+    await CacheService.invalidateFitness(session.userId);
 
     return successResponse(workout, "Workout session logged & XP awarded", 201);
   } catch (error) {

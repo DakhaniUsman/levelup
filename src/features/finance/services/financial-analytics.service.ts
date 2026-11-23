@@ -3,6 +3,7 @@ import dbConnect from "@/lib/db";
 import Expense, { IExpense } from "@/models/Expense";
 import { BudgetService } from "./budget.service";
 import { formatCategoryLabel } from "../constants/categories";
+import { CacheService } from "@/lib/cache.service";
 
 export interface CategoryComparison {
   category: string;
@@ -71,10 +72,13 @@ export class FinancialAnalyticsService {
     userId: string | Types.ObjectId,
     month: string // "YYYY-MM"
   ): Promise<FinancialOverviewData> {
-    await dbConnect();
     const userObjId = typeof userId === "string" ? new Types.ObjectId(userId) : userId;
+    const cacheKey = CacheService.keys.financeOverview(userObjId.toString(), month);
 
-    const [budget, monthExpenses] = await Promise.all([
+    return CacheService.getOrSet(cacheKey, async () => {
+      await dbConnect();
+
+      const [budget, monthExpenses] = await Promise.all([
       BudgetService.getOrCreateBudget(userObjId, month),
       Expense.find({
         userId: userObjId,
@@ -169,7 +173,8 @@ export class FinancialAnalyticsService {
       highestSpendingCategory,
       incomesCount: (budget.incomes || []).length,
     };
-  }
+  }, 600);
+}
 
   /**
    * Generates daily and weekly spending trends and category distribution
@@ -178,15 +183,18 @@ export class FinancialAnalyticsService {
     userId: string | Types.ObjectId,
     month: string
   ): Promise<SpendingAnalyticsData> {
-    await dbConnect();
     const userObjId = typeof userId === "string" ? new Types.ObjectId(userId) : userId;
+    const cacheKey = CacheService.keys.financeAnalytics(userObjId.toString(), month);
 
-    const expenses = await Expense.find({
-      userId: userObjId,
-      targetDate: { $regex: new RegExp(`^${month}`) },
-    })
-      .sort({ targetDate: 1 })
-      .lean();
+    return CacheService.getOrSet(cacheKey, async () => {
+      await dbConnect();
+
+      const expenses = await Expense.find({
+        userId: userObjId,
+        targetDate: { $regex: new RegExp(`^${month}`) },
+      })
+        .sort({ targetDate: 1 })
+        .lean();
 
     // Days in month
     const [yearStr, monthStr] = month.split("-");
@@ -258,7 +266,8 @@ export class FinancialAnalyticsService {
       categoryDistribution,
       highestSpendingDay,
     };
-  }
+  }, 600);
+}
 
   /**
    * Generates comprehensive monthly financial report with comparative month-over-month insights
@@ -267,70 +276,75 @@ export class FinancialAnalyticsService {
     userId: string | Types.ObjectId,
     month: string
   ): Promise<MonthlyFinancialReportData> {
-    const prevMonth = this.getPreviousMonth(month);
+    const userObjId = typeof userId === "string" ? new Types.ObjectId(userId) : userId;
+    const cacheKey = CacheService.keys.financeReport(userObjId.toString(), month);
 
-    const [current, previous] = await Promise.all([
-      this.getMonthlyOverview(userId, month),
-      this.getMonthlyOverview(userId, prevMonth).catch(() => null),
-    ]);
+    return CacheService.getOrSet(cacheKey, async () => {
+      const prevMonth = this.getPreviousMonth(month);
 
-    const deltas = {
-      expenseChange: previous ? current.totalExpenses - previous.totalExpenses : 0,
-      savingsChange: previous ? current.netSavings - previous.netSavings : 0,
-      savingsRateChange: previous
-        ? Math.round((current.savingsRate - previous.savingsRate) * 10) / 10
-        : 0,
-    };
+      const [current, previous] = await Promise.all([
+        this.getMonthlyOverview(userObjId, month),
+        this.getMonthlyOverview(userObjId, prevMonth).catch(() => null),
+      ]);
 
-    const insights: string[] = [];
+      const deltas = {
+        expenseChange: previous ? current.totalExpenses - previous.totalExpenses : 0,
+        savingsChange: previous ? current.netSavings - previous.netSavings : 0,
+        savingsRateChange: previous
+          ? Math.round((current.savingsRate - previous.savingsRate) * 10) / 10
+          : 0,
+      };
 
-    // Savings insight
-    if (current.netSavings >= 0) {
-      insights.push(
-        `Positive Net Savings: You preserved ₹${current.netSavings.toLocaleString("en-IN")} this month (${current.savingsRate}% savings rate).`
-      );
-    } else {
-      insights.push(
-        `Negative Savings Warning: Expenditures exceeded total income by ₹${Math.abs(current.netSavings).toLocaleString("en-IN")}.`
-      );
-    }
+      const insights: string[] = [];
 
-    // Budget adherence insight
-    const adheredCount = current.categories.filter((c) => !c.isOverbudget).length;
-    const totalCount = current.categories.length;
-    if (totalCount > 0) {
-      insights.push(
-        `Budget Adherence: You stayed within ${adheredCount} of ${totalCount} category allocations (${Math.round((adheredCount / totalCount) * 100)}% adherence rate).`
-      );
-    }
-
-    // Comparative insight
-    if (previous && previous.totalExpenses > 0) {
-      if (deltas.expenseChange > 0) {
+      // Savings insight
+      if (current.netSavings >= 0) {
         insights.push(
-          `Spending Trend: You spent ₹${deltas.expenseChange.toLocaleString("en-IN")} more overall compared to ${prevMonth}.`
+          `Positive Net Savings: You preserved ₹${current.netSavings.toLocaleString("en-IN")} this month (${current.savingsRate}% savings rate).`
         );
-      } else if (deltas.expenseChange < 0) {
+      } else {
         insights.push(
-          `Savings Discipline: You reduced overall expenditures by ₹${Math.abs(deltas.expenseChange).toLocaleString("en-IN")} compared to ${prevMonth}.`
+          `Negative Savings Warning: Expenditures exceeded total income by ₹${Math.abs(current.netSavings).toLocaleString("en-IN")}.`
         );
       }
-    }
 
-    // Highest category insight
-    if (current.highestSpendingCategory) {
-      insights.push(
-        `Primary Capital Drain: ${current.highestSpendingCategory.name} accounted for ₹${current.highestSpendingCategory.amount.toLocaleString("en-IN")} of total spending.`
-      );
-    }
+      // Budget adherence insight
+      const adheredCount = current.categories.filter((c) => !c.isOverbudget).length;
+      const totalCount = current.categories.length;
+      if (totalCount > 0) {
+        insights.push(
+          `Budget Adherence: You stayed within ${adheredCount} of ${totalCount} category allocations (${Math.round((adheredCount / totalCount) * 100)}% adherence rate).`
+        );
+      }
 
-    return {
-      month,
-      previousMonth: prevMonth,
-      current,
-      previous,
-      deltas,
-      insights,
-    };
+      // Comparative insight
+      if (previous && previous.totalExpenses > 0) {
+        if (deltas.expenseChange > 0) {
+          insights.push(
+            `Spending Trend: You spent ₹${deltas.expenseChange.toLocaleString("en-IN")} more overall compared to ${prevMonth}.`
+          );
+        } else if (deltas.expenseChange < 0) {
+          insights.push(
+            `Savings Discipline: You reduced overall expenditures by ₹${Math.abs(deltas.expenseChange).toLocaleString("en-IN")} compared to ${prevMonth}.`
+          );
+        }
+      }
+
+      // Highest category insight
+      if (current.highestSpendingCategory) {
+        insights.push(
+          `Primary Capital Drain: ${current.highestSpendingCategory.name} accounted for ₹${current.highestSpendingCategory.amount.toLocaleString("en-IN")} of total spending.`
+        );
+      }
+
+      return {
+        month,
+        previousMonth: prevMonth,
+        current,
+        previous,
+        deltas,
+        insights,
+      };
+    }, 600);
   }
 }

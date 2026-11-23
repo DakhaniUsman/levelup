@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
 import { TaskService } from "@/features/tasks/services/task.service";
 import { CreateTaskSchema } from "@/features/tasks/schemas/task.schema";
+import { CacheService } from "@/lib/cache.service";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-response";
 import { TaskCategory, TaskPriority, TaskStatus } from "@/models/Task";
 
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
     const json = await req.json();
     const validatedData = CreateTaskSchema.parse(json);
     const task = await TaskService.createTask(session.userId, validatedData);
+    await CacheService.del(CacheService.keys.dashboard(session.userId));
 
     return successResponse(task, "Task created successfully", 201);
   } catch (error) {

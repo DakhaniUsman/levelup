@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { BodyWeightService } from "@/features/fitness/services/body-weight.service";
 import { ProtocolService } from "@/features/protocol/services/protocol.service";
 import UserProfile from "@/models/UserProfile";
+import { CacheService } from "@/lib/cache.service";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-response";
 
 const LogWeightSchema = z.object({
@@ -49,6 +50,9 @@ export async function POST(req: NextRequest) {
       validated.weightKg,
       validated.notes || ""
     );
+
+    // Invalidate fitness and dashboard caches
+    await CacheService.invalidateFitness(session.userId);
 
     return successResponse(entry, "Weight measurement recorded successfully", 201);
   } catch (error) {

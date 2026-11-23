@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/session";
 import { BodyWeightService } from "@/features/fitness/services/body-weight.service";
+import { CacheService } from "@/lib/cache.service";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-response";
 
 const UpdateWeightSchema = z.object({
@@ -30,6 +31,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return errorResponse("Weight entry not found", "NOT_FOUND", 404);
     }
 
+    await CacheService.invalidateFitness(session.userId);
+
     return successResponse(updated, "Weight entry updated successfully");
   } catch (error) {
     return handleApiError(error);
@@ -48,6 +51,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     if (!success) {
       return errorResponse("Weight entry not found", "NOT_FOUND", 404);
     }
+
+    await CacheService.invalidateFitness(session.userId);
 
     return successResponse({ deleted: true }, "Weight entry deleted successfully");
   } catch (error) {

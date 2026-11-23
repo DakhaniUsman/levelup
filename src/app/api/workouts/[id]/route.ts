@@ -4,6 +4,7 @@ import dbConnect from "@/lib/db";
 import Workout from "@/models/Workout";
 import UserProfile from "@/models/UserProfile";
 import { ProtocolService } from "@/features/protocol/services/protocol.service";
+import { CacheService } from "@/lib/cache.service";
 import {
   successResponse,
   errorResponse,
@@ -92,6 +93,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     // Synchronize daily protocol status
     await ProtocolService.syncWorkoutStatus(session.userId, timezone);
 
+    // Invalidate fitness and dashboard caches
+    await CacheService.invalidateFitness(session.userId);
+
     return successResponse(workout, "Workout updated successfully");
   } catch (error) {
     return handleApiError(error);
@@ -122,6 +126,9 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
 
     // Synchronize daily protocol status across modules
     await ProtocolService.syncWorkoutStatus(session.userId, timezone);
+
+    // Invalidate fitness and dashboard caches
+    await CacheService.invalidateFitness(session.userId);
 
     return successResponse(
       { deletedId: id },

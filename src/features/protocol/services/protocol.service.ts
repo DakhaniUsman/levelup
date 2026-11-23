@@ -9,6 +9,7 @@ import Workout from "@/models/Workout";
 import { XPService } from "@/features/progression/services/xp.service";
 import { NotificationService } from "@/features/notifications/services/notification.service";
 import { ProtocolItemService } from "./protocol-item.service";
+import { CacheService } from "@/lib/cache.service";
 
 export class ProtocolService {
   static getTodayDateString(timezone = "UTC"): string {
@@ -554,6 +555,7 @@ export class ProtocolService {
     }
 
     await protocol.save();
+    await CacheService.invalidateProtocol(userObjId.toString(), protocol.targetDate);
     return protocol;
   }
 
@@ -599,6 +601,7 @@ export class ProtocolService {
     }
 
     await protocol.save();
+    await CacheService.invalidateProtocol(userObjId.toString(), protocol.targetDate);
     return protocol;
   }
 
@@ -635,6 +638,7 @@ export class ProtocolService {
     protocol.transgressionReason = reason || "Transgression declared by Hunter";
     protocol.transgressedAt = new Date();
     await protocol.save();
+    await CacheService.invalidateProtocol(userObjId.toString(), protocol.targetDate);
 
     // 3. Reset streaks on all user habits (breaking current streak)
     await Habit.updateMany(
