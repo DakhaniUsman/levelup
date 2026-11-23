@@ -13,12 +13,13 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState("UTC");
   const [successMsg, setSuccessMsg] = useState(false);
 
-  const { data: user, isLoading } = useQuery<SafeUser>({
+  const { data: user, isLoading } = useQuery<SafeUser | null>({
     queryKey: ["current-user"],
     queryFn: async () => {
       const res = await fetch("/api/auth/me");
+      if (!res.ok) return null;
       const json = await res.json();
-      return json.data;
+      return json.data ?? null;
     },
   });
 

@@ -24,8 +24,9 @@ export default function HUDNotificationToast() {
     queryKey: ["notifications-live"],
     queryFn: async () => {
       const res = await fetch("/api/notifications");
+      if (!res.ok) return { notifications: [], unreadCount: 0 };
       const json = await res.json();
-      return json.data;
+      return json.data || { notifications: [], unreadCount: 0 };
     },
     refetchInterval: 30000,
   });
